@@ -6,7 +6,7 @@ import ScheduleDetailPage from "./pages/ScheduleDetailPage";
 import ScheduleCreatePage from "./pages/SecheduleCreatePage";
 import VideoDetailPage from "./pages/VideoDetailPage";
 import VideoLibraryPage from "./pages/VideoLibraryPage";
-import VideoUploadAIPage from "./pages/VideUploadPage";
+import CanvasPage from "./pages/CanvasPage";
 import SidebarLayout from "./layout/SidebarLayout";
 import DashboardPage from "./pages/DashboardPage";
 
@@ -21,7 +21,8 @@ function App() {
           <Route path="/schedules/create" element={<ScheduleCreatePage />} />
           <Route path="/schedules/:id" element={<ScheduleDetailPage />} />
           <Route path="/videos" element={<VideoLibraryPage />} />
-          <Route path="/videos/upload" element={<VideoUploadAIPage />} />
+          <Route path="/videos/upload" element={<CanvasPage />} />
+          <Route path="/canvas" element={<CanvasPage />} />
           <Route path="/videos/:id" element={<VideoDetailPage />} />
           <Route path="/account" element={<AccountSettingsPage />} />
         </Route>
