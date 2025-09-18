@@ -70,10 +70,15 @@ export const Sidebar = ({
 };
 
 export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
+  const mobileSidebarProps = {
+    className: props.className,
+    children: props.children as React.ReactNode,
+  };
+
   return (
     <>
       <DesktopSidebar {...props} />
-      <MobileSidebar {...(props as React.ComponentProps<"div">)} />
+      <MobileSidebar {...mobileSidebarProps} />
     </>
   );
 };
@@ -122,7 +127,9 @@ export const MobileSidebar = ({
           <div className="h-8 w-8 bg-black rounded flex items-center justify-center">
             <span className="text-white text-sm font-bold">A</span>
           </div>
-          <span className="font-medium text-neutral-800 dark:text-neutral-200">Acet Labs</span>
+          <span className="font-medium text-neutral-800 dark:text-neutral-200">
+            Acet Labs
+          </span>
         </div>
         <button
           className="p-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
@@ -151,7 +158,9 @@ export const MobileSidebar = ({
                   <div className="h-8 w-8 bg-black rounded flex items-center justify-center">
                     <span className="text-white text-sm font-bold">A</span>
                   </div>
-                  <span className="font-medium text-neutral-800 dark:text-neutral-200">Acet Labs</span>
+                  <span className="font-medium text-neutral-800 dark:text-neutral-200">
+                    Acet Labs
+                  </span>
                 </div>
                 <button
                   className="p-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors"
@@ -161,9 +170,7 @@ export const MobileSidebar = ({
                   <IconX className="h-6 w-6 text-neutral-800 dark:text-neutral-200" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto">
-                {children}
-              </div>
+              <div className="flex-1 overflow-y-auto">{children}</div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -175,32 +182,140 @@ export const MobileSidebar = ({
 export const SidebarLink = ({
   link,
   className,
+  currentPath,
   ...props
 }: {
   link: Links;
   className?: string;
+  currentPath?: string;
 }) => {
   const { open, animate } = useSidebar();
+  const isActive = currentPath === link.href;
+
   return (
     <a
       href={link.href}
       className={cn(
-        "flex items-center justify-start gap-2  group/sidebar py-2",
+        "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors",
+        open ? "justify-start" : "justify-center",
+        isActive && "bg-neutral-200 dark:bg-neutral-700",
         className
       )}
       {...props}
     >
-      {link.icon}
+      <div
+        className={cn("flex-shrink-0", isActive && "[&>svg]:stroke-[2.5px]")}
+      >
+        {link.icon}
+      </div>
 
       <motion.span
         animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
+          width: animate ? (open ? "auto" : "0px") : "auto",
           opacity: animate ? (open ? 1 : 0) : 1,
         }}
-        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
+        transition={{ duration: 0.2, ease: "easeInOut" }}
+        className={cn(
+          "text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 overflow-hidden whitespace-nowrap",
+          !open && "hidden",
+          isActive && "font-bold"
+        )}
       >
         {link.label}
       </motion.span>
     </a>
+  );
+};
+
+export const SidebarCategory = ({
+  category,
+  icon,
+  children,
+  className,
+  links = [],
+  currentPath,
+  ...props
+}: {
+  category: string;
+  icon: React.JSX.Element | React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+  links?: Links[];
+  currentPath?: string;
+}) => {
+  const { open } = useSidebar();
+  const [expanded, setExpanded] = useState(false);
+
+  // Check if any of the category's links is active
+  const isActive = links.some((link) => currentPath === link.href);
+
+  const handleClick = () => {
+    setExpanded(!expanded);
+  };
+
+  return (
+    <div className="flex flex-col relative">
+      <button
+        onClick={handleClick}
+        className={cn(
+          "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors",
+          open ? "justify-start" : "justify-center",
+          isActive && "bg-neutral-200 dark:bg-neutral-700",
+          className
+        )}
+        {...props}
+      >
+        <div
+          className={cn("flex-shrink-0", isActive && "[&>svg]:stroke-[2.5px]")}
+        >
+          {icon}
+        </div>
+
+        <motion.span
+          animate={{
+            width: open ? "auto" : "0px",
+            opacity: open ? 1 : 0,
+          }}
+          transition={{ duration: 0.2, ease: "easeInOut" }}
+          className={cn(
+            "text-neutral-700 dark:text-neutral-200 text-sm font-medium capitalize overflow-hidden whitespace-nowrap",
+            !open && "hidden",
+            isActive && "font-bold"
+          )}
+        >
+          {category}
+        </motion.span>
+      </button>
+
+      {/* Show submenu only when expanded */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className={cn(
+              "overflow-hidden",
+              open
+                ? "ml-2"
+                : "absolute left-16 top-0 bg-white dark:bg-neutral-800 shadow-lg rounded-md p-2 z-50 min-w-[200px] border"
+            )}
+          >
+            {!open && (
+              <div
+                className={cn(
+                  "text-xs font-semibold text-neutral-500 uppercase tracking-wider px-2 mb-2",
+                  isActive && "font-bold"
+                )}
+              >
+                {category}
+              </div>
+            )}
+            {children}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };

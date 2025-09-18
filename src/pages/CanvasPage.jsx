@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { UploadCloud, Film, Sparkles, Save, MessageSquare, Lightbulb, Video } from "lucide-react";
+import {
+  UploadCloud,
+  Film,
+  Sparkles,
+  Save,
+  MessageSquare,
+  Lightbulb,
+  Video,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,7 +23,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 const MAX_FILE_MB = 1024; // 1 GB
 
 export default function CanvasPage() {
-  const [canvasMode, setCanvasMode] = useState('create'); // 'create' or 'discuss'
+  const [canvasMode, setCanvasMode] = useState("create"); // 'create' or 'discuss'
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
       <div className="px-4 py-6 md:px-10 md:py-10 lg:px-15 lg:py-2">
@@ -25,22 +33,24 @@ export default function CanvasPage() {
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight flex items-center gap-2">
               <Lightbulb className="h-6 w-6" /> Canvas - AI Creative Workspace
             </h1>
-            <p className="text-slate-600 mt-1">Ruang kerja kreatori video untuk berinteraksi dengan AI</p>
+            <p className="text-slate-600 mt-1">
+              Ruang kerja kreatori video untuk berinteraksi dengan AI
+            </p>
           </div>
-          
+
           {/* Mode Toggle */}
           <div className="flex items-center gap-2">
             <Button
-              variant={canvasMode === 'create' ? 'default' : 'outline'}
-              onClick={() => setCanvasMode('create')}
+              variant={canvasMode === "create" ? "default" : "outline"}
+              onClick={() => setCanvasMode("create")}
               className="flex items-center gap-2"
             >
               <MessageSquare className="h-4 w-4" />
               Buat Konten dari Awal
             </Button>
             <Button
-              variant={canvasMode === 'discuss' ? 'default' : 'outline'}
-              onClick={() => setCanvasMode('discuss')}
+              variant={canvasMode === "discuss" ? "default" : "outline"}
+              onClick={() => setCanvasMode("discuss")}
               className="flex items-center gap-2"
             >
               <Video className="h-4 w-4" />
@@ -50,7 +60,7 @@ export default function CanvasPage() {
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 md:mt-8 lg:grid-cols-3">
-          {canvasMode === 'create' && (
+          {canvasMode === "create" && (
             <>
               {/* Mode 1: Buat Konten dari Awal - Chat Interface */}
               <Card className="lg:col-span-1">
@@ -67,18 +77,19 @@ export default function CanvasPage() {
                     <div className="h-[300px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto">
                       <div className="text-sm text-slate-600">
                         <div className="mb-4 p-3 bg-white rounded-lg shadow-sm">
-                          <strong>AI:</strong> Halo! Saya siap membantu Anda membuat konten video. 
-                          Ceritakan ide konten apa yang ingin Anda buat?
+                          <strong>AI:</strong> Halo! Saya siap membantu Anda
+                          membuat konten video. Ceritakan ide konten apa yang
+                          ingin Anda buat?
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                       <input
                         type="text"
                         placeholder="Ketik pesan Anda..."
-                        className="flex-1 rounded-xl border p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                        className="flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                       />
-                      <Button size="sm">
+                      <Button size="sm" className="h-10 w-10 p-0">
                         <MessageSquare className="h-4 w-4" />
                       </Button>
                     </div>
@@ -95,7 +106,8 @@ export default function CanvasPage() {
                       Hasil AI Generator
                     </CardTitle>
                     <CardDescription>
-                      Output dari chat AI: Script, Storyboard, Hooks, Tags, dan Caption
+                      Output dari chat AI: Script, Storyboard, Hooks, Tags, dan
+                      Caption
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -149,7 +161,9 @@ export default function CanvasPage() {
                           Tags yang Direkomendasikan
                         </label>
                         <div className="min-h-[100px] w-full rounded-xl border p-3 bg-slate-50/50">
-                          <p className="text-sm text-slate-500">Tags akan muncul di sini setelah chat dengan AI...</p>
+                          <p className="text-sm text-slate-500">
+                            Tags akan muncul di sini setelah chat dengan AI...
+                          </p>
                         </div>
                       </TabsContent>
                       <TabsContent value="caption" className="mt-4">
@@ -180,7 +194,7 @@ export default function CanvasPage() {
             </>
           )}
 
-          {canvasMode === 'discuss' && (
+          {canvasMode === "discuss" && (
             <>
               {/* Mode 2: Diskusi Konten yang Sudah Ada - Upload Video */}
               <Card className="lg:col-span-1">
@@ -194,9 +208,7 @@ export default function CanvasPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div
-                      className="group relative w-full rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center transition hover:border-slate-300"
-                    >
+                    <div className="group relative w-full rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center transition hover:border-slate-300">
                       <input
                         id="file"
                         type="file"
@@ -208,15 +220,16 @@ export default function CanvasPage() {
                           <Video className="h-7 w-7" />
                         </div>
                         <p className="mt-3 text-sm">
-                          <span className="font-medium">Seret & lepas</span> atau klik
-                          untuk <span className="font-medium">pilih video</span>
+                          <span className="font-medium">Seret & lepas</span>{" "}
+                          atau klik untuk{" "}
+                          <span className="font-medium">pilih video</span>
                         </p>
                         <p className="text-xs text-slate-500 mt-1">
                           Tipe: video/* · Maks {MAX_FILE_MB}MB
                         </p>
                       </div>
                     </div>
-                    
+
                     {/* Chat dengan AI tentang video */}
                     <div className="mt-6">
                       <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
@@ -226,17 +239,19 @@ export default function CanvasPage() {
                       <div className="h-[200px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3">
                         <div className="text-sm text-slate-600">
                           <div className="mb-4 p-3 bg-white rounded-lg shadow-sm">
-                            <strong>AI:</strong> Upload video terlebih dahulu, lalu saya akan memberikan saran perbaikan untuk konten Anda.
+                            <strong>AI:</strong> Upload video terlebih dahulu,
+                            lalu saya akan memberikan saran perbaikan untuk
+                            konten Anda.
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
                         <input
                           type="text"
                           placeholder="Tanyakan tentang video Anda..."
-                          className="flex-1 rounded-xl border p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                          className="flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                         />
-                        <Button size="sm">
+                        <Button size="sm" className="h-10 w-10 p-0">
                           <MessageSquare className="h-4 w-4" />
                         </Button>
                       </div>
@@ -263,7 +278,9 @@ export default function CanvasPage() {
                         <TabsTrigger value="analysis">Analisis</TabsTrigger>
                         <TabsTrigger value="caption-fix">Caption</TabsTrigger>
                         <TabsTrigger value="tags-fix">Tags</TabsTrigger>
-                        <TabsTrigger value="suggestions">Saran Lain</TabsTrigger>
+                        <TabsTrigger value="suggestions">
+                          Saran Lain
+                        </TabsTrigger>
                       </TabsList>
                       <TabsContent value="analysis" className="mt-4">
                         <label className="block text-sm font-medium mb-2">
@@ -271,7 +288,8 @@ export default function CanvasPage() {
                         </label>
                         <div className="min-h-[200px] w-full rounded-xl border p-3 bg-slate-50/50">
                           <p className="text-sm text-slate-500">
-                            Analisis video akan muncul di sini setelah upload dan proses AI...
+                            Analisis video akan muncul di sini setelah upload
+                            dan proses AI...
                           </p>
                         </div>
                       </TabsContent>
@@ -281,12 +299,20 @@ export default function CanvasPage() {
                         </label>
                         <div className="space-y-3">
                           <div className="p-3 rounded-xl border bg-white">
-                            <span className="text-xs text-slate-500 block mb-1">Caption Saat Ini:</span>
-                            <p className="text-sm">Akan terdeteksi setelah upload video...</p>
+                            <span className="text-xs text-slate-500 block mb-1">
+                              Caption Saat Ini:
+                            </span>
+                            <p className="text-sm">
+                              Akan terdeteksi setelah upload video...
+                            </p>
                           </div>
                           <div className="p-3 rounded-xl border bg-blue-50/50">
-                            <span className="text-xs text-blue-600 block mb-1">Saran AI:</span>
-                            <p className="text-sm">Saran perbaikan caption akan muncul di sini...</p>
+                            <span className="text-xs text-blue-600 block mb-1">
+                              Saran AI:
+                            </span>
+                            <p className="text-sm">
+                              Saran perbaikan caption akan muncul di sini...
+                            </p>
                           </div>
                         </div>
                       </TabsContent>
@@ -296,12 +322,20 @@ export default function CanvasPage() {
                         </label>
                         <div className="space-y-3">
                           <div className="p-3 rounded-xl border bg-white">
-                            <span className="text-xs text-slate-500 block mb-2">Tags Saat Ini:</span>
-                            <div className="text-sm text-slate-500">Akan terdeteksi setelah upload video...</div>
+                            <span className="text-xs text-slate-500 block mb-2">
+                              Tags Saat Ini:
+                            </span>
+                            <div className="text-sm text-slate-500">
+                              Akan terdeteksi setelah upload video...
+                            </div>
                           </div>
                           <div className="p-3 rounded-xl border bg-green-50/50">
-                            <span className="text-xs text-green-600 block mb-2">Tags yang Disarankan:</span>
-                            <div className="text-sm text-slate-500">Saran tags akan muncul di sini...</div>
+                            <span className="text-xs text-green-600 block mb-2">
+                              Tags yang Disarankan:
+                            </span>
+                            <div className="text-sm text-slate-500">
+                              Saran tags akan muncul di sini...
+                            </div>
                           </div>
                         </div>
                       </TabsContent>
@@ -311,7 +345,8 @@ export default function CanvasPage() {
                         </label>
                         <div className="min-h-[200px] w-full rounded-xl border p-3 bg-slate-50/50">
                           <p className="text-sm text-slate-500">
-                            Saran perbaikan lainnya akan muncul di sini setelah AI menganalisis video...
+                            Saran perbaikan lainnya akan muncul di sini setelah
+                            AI menganalisis video...
                           </p>
                         </div>
                       </TabsContent>
@@ -334,7 +369,6 @@ export default function CanvasPage() {
             </>
           )}
         </div>
-
       </div>
     </div>
   );
