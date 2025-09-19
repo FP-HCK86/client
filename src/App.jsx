@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AuthProvider } from "./contexts/AuthContext";
 import AccountSettingsPage from "./pages/AccountSettingPage";
 import LoginPageVisual from "./pages/LoginPageVisual";
+import LogoutPage from "./pages/LogoutPage";
 import ScheduleCalendarPage from "./pages/ScheduleCalenderPage";
 import ScheduleDetailPage from "./pages/ScheduleDetailPage";
 import ScheduleCreatePage from "./pages/SecheduleCreatePage";
@@ -18,6 +19,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPageVisual />} />
+          <Route path="/logout" element={<LogoutPage />} />
           <Route path="/" element={<HeroSection />} />
           <Route element={<SidebarLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
