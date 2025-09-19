@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
   ChevronLeft,
@@ -11,6 +11,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import axios from "axios";
 import { useAuth } from "@/hooks/useAuth";
+import { startOfDay, addDays, sameDay, startOfWeekMonday } from "@/lib/dateHelpers";
+import { getMonthMatrix, getWeekRange } from "@/lib/calendarMatrix";
+import { getEventsOnDate } from "@/lib/eventHelpers";
+import { formatDateHead, formatDayNum, formatWeekdayShort, formatTime } from "@/lib/formatters";
+import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 
 export default function ScheduleCalendarPage({
   onOpenEvent,
@@ -18,8 +23,7 @@ export default function ScheduleCalendarPage({
 }) {
   // views: month | week | day
   const [view, setView] = useState("month");
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { currentDate, setCurrentDate, selectedDate, setSelectedDate, gotoToday, gotoPrev, gotoNext } = useCalendarNavigation();
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -61,116 +65,11 @@ export default function ScheduleCalendarPage({
       });
   }, [schedules]);
 
-  // --- Helpers tanggal ---
-  const startOfDay = (d) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const addDays = (d, n) =>
-    new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-  const sameDay = (a, b) =>
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
-  // const sameMonth = (a, b) =>
-  //   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
-  const startOfWeekMonday = useCallback((d) => {
-    const day = (d.getDay() + 6) % 7; // 0=Mon ... 6=Sun
-    const start = addDays(startOfDay(d), -day);
-    return start;
-  }, []);
+  const monthMatrix = useMemo(() => getMonthMatrix(currentDate), [currentDate]);
 
-  const monthMatrix = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+  const weekRange = useMemo(() => getWeekRange(currentDate), [currentDate]);
 
-    // Get first and last day of the month
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    // Get all days in the current month
-    const days = [];
-    for (let day = 1; day <= lastDay.getDate(); day++) {
-      const date = new Date(year, month, day);
-      days.push({ date, inMonth: true });
-    }
-
-    // Group days by weeks (starting from Monday)
-    const weeks = [];
-    let currentWeek = [];
-
-    // Add empty slots for days before the first day of month
-    const firstDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const mondayOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1; // Convert to Monday-based (0 = Monday)
-
-    for (let i = 0; i < mondayOffset; i++) {
-      currentWeek.push(null); // Empty slot
-    }
-
-    // Add days of the month
-    days.forEach((day) => {
-      if (currentWeek.length === 7) {
-        weeks.push(currentWeek);
-        currentWeek = [];
-      }
-      currentWeek.push(day);
-    });
-
-    // Fill remaining slots in the last week
-    while (currentWeek.length < 7) {
-      currentWeek.push(null);
-    }
-    weeks.push(currentWeek);
-
-    return weeks;
-  }, [currentDate]);
-
-  const weekRange = useMemo(() => {
-    const start = startOfWeekMonday(currentDate);
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [currentDate, startOfWeekMonday]);
-
-  const eventsOnDate = (date) => {
-    const dayStart = startOfDay(date).getTime();
-    const dayEnd = addDays(date, 1).getTime();
-    return events
-      .filter((e) => {
-        const s = new Date(e.start).getTime();
-        return s >= dayStart && s < dayEnd;
-      })
-      .sort((a, b) => new Date(a.start) - new Date(b.start));
-  };
-
-  const formatDateHead = (d) =>
-    d.toLocaleDateString(undefined, { year: "numeric", month: "long" });
-  const formatDayNum = (d) => d.getDate();
-  const formatWeekdayShort = (d) =>
-    d.toLocaleDateString(undefined, { weekday: "short" });
-  const formatTime = (iso) =>
-    new Date(iso).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-  const gotoToday = () => {
-    const t = new Date();
-    setCurrentDate(t);
-    setSelectedDate(t);
-  };
-  const gotoPrev = () => {
-    if (view === "month")
-      setCurrentDate(
-        new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
-      );
-    else if (view === "week") setCurrentDate(addDays(currentDate, -7));
-    else setCurrentDate(addDays(currentDate, -1));
-  };
-  const gotoNext = () => {
-    if (view === "month")
-      setCurrentDate(
-        new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
-      );
-    else if (view === "week") setCurrentDate(addDays(currentDate, 7));
-    else setCurrentDate(addDays(currentDate, 1));
-  };
+  const eventsOnDate = (date) => getEventsOnDate(date, events);
 
   const openEvent = (id) => {
     if (onOpenEvent) return onOpenEvent(id);
@@ -222,7 +121,7 @@ export default function ScheduleCalendarPage({
                   variant="outline"
                   size="icon"
                   className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
-                  onClick={gotoPrev}
+                  onClick={() => gotoPrev(view)}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -233,7 +132,7 @@ export default function ScheduleCalendarPage({
                   variant="outline"
                   size="icon"
                   className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
-                  onClick={gotoNext}
+                  onClick={() => gotoNext(view)}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
