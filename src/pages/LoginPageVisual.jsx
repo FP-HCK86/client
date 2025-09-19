@@ -91,8 +91,77 @@ const LoginPage = memo(() => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Initialize Google OAuth with error handling
-  useEffect(() => {
+  // Google OAuth error handler
+  const handleGoogleError = useCallback((error) => {
+    // Handle AbortError (user cancellation) gracefully
+    if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+      console.log('Google login cancelled by user');
+      setGoogleLoading(false);
+      return;
+    }
+
+    console.error("Google OAuth error:", error);
+    const errorMsg = "Google authentication unavailable. Please try again.";
+    setErrors({ general: errorMsg });
+    toast({
+      title: "Authentication Unavailable",
+      description: errorMsg,
+      variant: "destructive",
+    });
+    setGoogleLoading(false);
+  }, [toast]);
+
+  // Google OAuth success handler
+  const handleGoogleSuccess = useCallback(
+    async (response) => {
+      if (!response || !response.credential) {
+        handleGoogleError(new Error("Invalid Google response"));
+        return;
+      }
+
+      setErrors({});
+      setGoogleLoading(true);
+
+      toast({
+        title: "Authenticating...",
+        description: "Authenticating with Google",
+      });
+
+      try {
+        const result = await googleLogin(response.credential);
+
+        if (result.success) {
+          toast({
+            title: "Success!",
+            description: "Google authentication successful!",
+          });
+          navigate("/dashboard", { replace: true });
+        } else {
+          const errorMsg = result.error || "Google authentication failed";
+          setErrors({ general: errorMsg });
+          toast({
+            title: "Authentication Failed",
+            description: errorMsg,
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Google login error:", error);
+        const errorMsg = "Google authentication failed. Please try again.";
+        setErrors({ general: errorMsg });
+        toast({
+          title: "Authentication Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
+      } finally {
+        setGoogleLoading(false);
+      }
+    },
+    [googleLogin, navigate, toast]
+  );
+
+  // Form submission with enhanced error handling
     let isMounted = true;
 
     const initializeGoogle = () => {
@@ -165,13 +234,8 @@ const LoginPage = memo(() => {
 
     loadGoogleScript();
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   // Form submission with enhanced error handling
-  const handleSubmit = useCallback(
+  const _handleSubmit = useCallback(
     async (e) => {
       e.preventDefault();
 
@@ -237,69 +301,6 @@ const LoginPage = memo(() => {
     [formData, isLogin, login, register, navigate, validationErrors]
   );
 
-  // Google OAuth success handler
-  const handleGoogleSuccess = useCallback(
-    async (response) => {
-      if (!response || !response.credential) {
-        handleGoogleError(new Error("Invalid Google response"));
-        return;
-      }
-
-      setErrors({});
-      setGoogleLoading(true);
-
-      toast({
-        title: "Authenticating...",
-        description: "Authenticating with Google",
-      });
-
-      try {
-        const result = await googleLogin(response.credential);
-
-        if (result.success) {
-          toast({
-            title: "Success!",
-            description: "Google authentication successful!",
-          });
-          navigate("/dashboard", { replace: true });
-        } else {
-          const errorMsg = result.error || "Google authentication failed";
-          setErrors({ general: errorMsg });
-          toast({
-            title: "Authentication Failed",
-            description: errorMsg,
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Google login error:", error);
-        const errorMsg = "Google authentication failed. Please try again.";
-        setErrors({ general: errorMsg });
-        toast({
-          title: "Authentication Error",
-          description: errorMsg,
-          variant: "destructive",
-        });
-      } finally {
-        setGoogleLoading(false);
-      }
-    },
-    [googleLogin, navigate]
-  );
-
-  // Google OAuth error handler
-  const handleGoogleError = useCallback((error) => {
-    console.error("Google OAuth error:", error);
-    const errorMsg = "Google authentication unavailable. Please try again.";
-    setErrors({ general: errorMsg });
-    toast({
-      title: "Authentication Unavailable",
-      description: errorMsg,
-      variant: "destructive",
-    });
-    setGoogleLoading(false);
-  }, []);
-
   // Input change handler with validation
   const handleInputChange = useCallback(
     (e) => {
@@ -342,7 +343,7 @@ const LoginPage = memo(() => {
   }, [handleGoogleError]);
 
   // Toggle between login/register
-  const toggleMode = useCallback(() => {
+  const _toggleMode = useCallback(() => {
     setIsLogin((prev) => !prev);
     setErrors({});
     setFormData({ username: "", email: "", password: "" });
