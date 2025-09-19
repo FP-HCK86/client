@@ -92,20 +92,24 @@ export const AuthProvider = ({ children }) => {
   // Google login function - matches backend expectation
   const googleLogin = useCallback(async (credential) => {
     try {
-      const response = await axios.post('/google-login', {}, {
-        headers: {
-          'id_token': credential
-        }
-      });
+      // Check if this is test mode
+      const isTestMode = credential === 'test_credential';
+      
+      const requestData = isTestMode 
+        ? { testMode: true } 
+        : { credential };
+
+      const response = await axios.post('/google-login', requestData);
 
       if (response.data.access_token) {
         localStorage.setItem('authToken', response.data.access_token);
-        // For now, we'll create a basic user object since backend doesn't return user data
-        setUser({
+        // Use actual user data from backend response
+        const userData = response.data.user || {
           id: 'google-user',
           name: 'Google User',
           email: 'google@example.com'
-        });
+        };
+        setUser(userData);
         setIsAuthenticated(true);
         return { success: true };
       } else {

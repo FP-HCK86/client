@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { useAuth } from '@/hooks/useAuth';
-import toast from 'react-hot-toast';
+import React, { useEffect } from "react";
+import { useNavigate } from "react-router";
+import { useAuth } from "@/hooks/useAuth";
+import toast from "react-hot-toast";
 
 const LogoutPage = () => {
   const { logout, isAuthenticated } = useAuth();
@@ -11,11 +11,10 @@ const LogoutPage = () => {
     const handleLogout = async () => {
       try {
         // Show loading toast
-        const loadingToast = toast.loading('Logging out...', {
-          icon: '🔐',
+        const loadingToast = toast.loading("Logging out...", {
           style: {
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: '#ffffff',
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "#ffffff",
           },
         });
 
@@ -26,22 +25,19 @@ const LogoutPage = () => {
         toast.dismiss(loadingToast);
 
         // Show success message
-        toast.success('Logged out successfully! 👋', {
-          icon: '👋',
+        toast.success("Logged out successfully!", {
           style: {
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
           },
         });
 
         // Redirect to login page
-        navigate('/login', { replace: true });
+        navigate("/login", { replace: true });
       } catch (error) {
-        console.error('Logout error:', error);
-        toast.error('Logout failed. Please try again.', {
-          icon: '❌',
-        });
+        console.error("Logout error:", error);
+        toast.error("Logout failed. Please try again.", {});
         // Still redirect to login even if logout fails
-        navigate('/login', { replace: true });
+        navigate("/login", { replace: true });
       }
     };
 
@@ -50,7 +46,7 @@ const LogoutPage = () => {
       handleLogout();
     } else {
       // If not authenticated, just redirect to login
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
     }
   }, [logout, navigate, isAuthenticated]);
 
