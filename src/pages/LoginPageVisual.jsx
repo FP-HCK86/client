@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
+import React, { useState, useEffect, useCallback, memo } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   Card,
@@ -9,149 +9,55 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import {
-  Chrome,
-  ArrowLeft,
-  Eye,
-  EyeOff,
-  AlertCircle,
-} from "lucide-react";
+import { ArrowLeft, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth.jsx";
 import { useToast } from "@/hooks/use-toast";
 
-// Environment variables for production
-const GOOGLE_CLIENT_ID =
-  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-  "411452003367-vi21idqns4uhui7esotdheodqeqhpk6q.apps.googleusercontent.com";
-
-// Production-ready validation
-const validateEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-const validatePassword = (password) => {
-  return password.length >= 8;
-};
-
-const validateUsername = (username) => {
-  return username.length >= 3 && username.length <= 20;
-};
-
-// Loading Component
-const LoadingSpinner = memo(() => (
-  <div className="flex items-center justify-center">
-    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-  </div>
-));
-
 const LoginPage = memo(() => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-  });
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-
-  const { login, register, googleLogin, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { googleLogin, isAuthenticated } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  // Memoized validation
-  const validationErrors = useMemo(() => {
-    const newErrors = {};
-
-    if (!isLogin && formData.username && !validateUsername(formData.username)) {
-      newErrors.username = "Username must be 3-20 characters long";
-    }
-
-    if (formData.email && !validateEmail(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
-
-    if (formData.password && !validatePassword(formData.password)) {
-      newErrors.password = "Password must be at least 8 characters long";
-    }
-
-    return newErrors;
-  }, [formData, isLogin]);
+  // Local UI state
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/dashboard", { replace: true });
-    }
+    if (isAuthenticated) navigate("/dashboard", { replace: true });
   }, [isAuthenticated, navigate]);
 
-  // Google OAuth error handler
-  const handleGoogleError = useCallback((error) => {
-    // Handle AbortError (user cancellation) gracefully
-    if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
-      console.log('Google login cancelled by user');
-      setGoogleLoading(false);
-      return;
-    }
-
-    console.error("Google OAuth error:", error);
-    const errorMsg = "Google authentication unavailable. Please try again.";
-    setErrors({ general: errorMsg });
-    toast({
-      title: "Authentication Unavailable",
-      description: errorMsg,
-      variant: "destructive",
-    });
-    setGoogleLoading(false);
-  }, [toast]);
-
-  // Google OAuth success handler
-  const handleGoogleSuccess = useCallback(
+  const handleCredentialResponse = useCallback(
     async (response) => {
-      if (!response || !response.credential) {
-        handleGoogleError(new Error("Invalid Google response"));
-        return;
-      }
-
-      setErrors({});
+      if (!response?.credential) return;
       setGoogleLoading(true);
-
+      setErrors({});
       toast({
         title: "Authenticating...",
-        description: "Authenticating with Google",
+        description: "Verifying Google credential",
       });
-
       try {
         const result = await googleLogin(response.credential);
-
         if (result.success) {
-          toast({
-            title: "Success!",
-            description: "Google authentication successful!",
-          });
+          toast({ title: "Success", description: "Login successful" });
           navigate("/dashboard", { replace: true });
         } else {
-          const errorMsg = result.error || "Google authentication failed";
-          setErrors({ general: errorMsg });
+          const msg = result.error || "Google authentication failed";
+          setErrors({ general: msg });
           toast({
             title: "Authentication Failed",
-            description: errorMsg,
+            description: msg,
             variant: "destructive",
           });
         }
-      } catch (error) {
-        console.error("Google login error:", error);
-        const errorMsg = "Google authentication failed. Please try again.";
-        setErrors({ general: errorMsg });
+      } catch (e) {
+        console.error("Google Sign-In error", e);
+        const msg = "Google authentication failed. Please try again.";
+        setErrors({ general: msg });
         toast({
           title: "Authentication Error",
-          description: errorMsg,
+          description: msg,
           variant: "destructive",
         });
       } finally {
@@ -161,198 +67,60 @@ const LoginPage = memo(() => {
     [googleLogin, navigate, toast]
   );
 
-  // Form submission with enhanced error handling
-    let isMounted = true;
-
-    const initializeGoogle = () => {
-      if (!isMounted) return;
-
+  // Single script loader & initializer (deduplicated)
+  useEffect(() => {
+    const initialize = () => {
+      if (!window.google?.accounts?.id) return;
       try {
-        if (window.google && window.google.accounts) {
-          window.google.accounts.id.initialize({
-            client_id: GOOGLE_CLIENT_ID,
-            callback: handleGoogleSuccess,
-            auto_select: false,
-            cancel_on_tap_outside: true,
-            context: "signin",
-            ux_mode: "popup",
-            error_callback: handleGoogleError,
+        window.google.accounts.id.initialize({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          callback: handleCredentialResponse,
+          cancel_on_tap_outside: true,
+          context: "signin",
+        });
+        const mountPoint = document.getElementById("google-btn");
+        if (mountPoint && mountPoint.childElementCount === 0) {
+          window.google.accounts.id.renderButton(mountPoint, {
+            theme: "outline",
+            size: "large",
+            width: 320,
           });
         }
-      } catch (error) {
-        console.error("Google OAuth initialization failed:", error);
-        if (isMounted) {
-          toast({
-            title: "Authentication Error",
-            description: "Google authentication setup failed",
-            variant: "destructive",
-          });
-        }
+      } catch (err) {
+        console.error("Google init failed", err);
+        toast({
+          title: "Init Error",
+          description: "Failed to initialize Google Sign-In",
+          variant: "destructive",
+        });
       }
     };
 
-    // Load Google script with timeout
-    const loadGoogleScript = () => {
-      if (window.google) {
-        initializeGoogle();
-        return;
-      }
+    if (window.google?.accounts?.id) {
+      initialize();
+      return;
+    }
 
+    const scriptId = "google-identity-services";
+    if (!document.getElementById(scriptId)) {
       const script = document.createElement("script");
+      script.id = scriptId;
       script.src = "https://accounts.google.com/gsi/client";
       script.async = true;
       script.defer = true;
-
-      const timeout = setTimeout(() => {
-        if (isMounted) {
-          toast({
-            title: "Loading Error",
-            description: "Google authentication failed to load",
-            variant: "destructive",
-          });
-        }
-      }, 10000);
-
-      script.onload = () => {
-        clearTimeout(timeout);
-        initializeGoogle();
-      };
-
-      script.onerror = () => {
-        clearTimeout(timeout);
-        if (isMounted) {
-          toast({
-            title: "Script Error",
-            description: "Failed to load Google authentication",
-            variant: "destructive",
-          });
-        }
-      };
-
-      document.head.appendChild(script);
-    };
-
-    loadGoogleScript();
-
-  // Form submission with enhanced error handling
-  const _handleSubmit = useCallback(
-    async (e) => {
-      e.preventDefault();
-
-      // Client-side validation
-      if (Object.keys(validationErrors).length > 0) {
-        setErrors(validationErrors);
-        return;
-      }
-
-      setErrors({});
-      setLoading(true);
-
-      try {
-        let result;
-        if (isLogin) {
-          result = await login(formData.email, formData.password);
-        } else {
-          result = await register(
-            formData.username,
-            formData.email,
-            formData.password
-          );
-        }
-
-        if (result.success) {
-          if (!isLogin) {
-            toast({
-              title: "Success!",
-              description: "Account created successfully!",
-            });
-            setIsLogin(true);
-            setFormData({ username: "", email: "", password: "" });
-          } else {
-            toast({
-              title: "Welcome back!",
-              description: "Login successful!",
-            });
-            navigate("/dashboard", { replace: true });
-          }
-        } else {
-          const errorMsg = result.error || "Authentication failed";
-          setErrors({ general: errorMsg });
-          toast({
-            title: "Authentication Failed",
-            description: errorMsg,
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Form submission error:", error);
-        const errorMsg =
-          error.message || "Authentication failed. Please try again.";
-        setErrors({ general: errorMsg });
+      script.onload = initialize;
+      script.onerror = () =>
         toast({
-          title: "Error",
-          description: errorMsg,
+          title: "Script Error",
+          description: "Failed to load Google Sign-In script",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
-      }
-    },
-    [formData, isLogin, login, register, navigate, validationErrors]
-  );
-
-  // Input change handler with validation
-  const handleInputChange = useCallback(
-    (e) => {
-      const { name, value } = e.target;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-      }));
-
-      // Clear field-specific errors on change
-      if (errors[name]) {
-        setErrors((prev) => ({
-          ...prev,
-          [name]: undefined,
-        }));
-      }
-
-      // Clear general error
-      if (errors.general) {
-        setErrors((prev) => ({
-          ...prev,
-          general: undefined,
-        }));
-      }
-    },
-    [errors]
-  );
-
-  // Google sign-in handler
-  const handleGoogleSignIn = useCallback(() => {
-    if (window.google && window.google.accounts) {
-      try {
-        window.google.accounts.id.prompt();
-      } catch (error) {
-        handleGoogleError(error);
-      }
+      document.head.appendChild(script);
     } else {
-      handleGoogleError(new Error("Google OAuth not initialized"));
+      const t = setTimeout(initialize, 500);
+      return () => clearTimeout(t);
     }
-  }, [handleGoogleError]);
-
-  // Toggle between login/register
-  const _toggleMode = useCallback(() => {
-    setIsLogin((prev) => !prev);
-    setErrors({});
-    setFormData({ username: "", email: "", password: "" });
-  }, []);
-
-  // Password visibility toggle
-  const togglePasswordVisibility = useCallback(() => {
-    setShowPassword((prev) => !prev);
-  }, []);
+  }, [handleCredentialResponse, toast]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -397,11 +165,13 @@ const LoginPage = memo(() => {
             <Card className="w-full max-w-md mx-auto">
               <CardHeader className="space-y-2">
                 <CardTitle className="text-center text-2xl md:text-3xl">
-                  {isLogin ? "Welcome Back" : "Create Account"}
+                  Welcome
                 </CardTitle>
                 <CardDescription className="text-center">
-                  Sign in with Google to access your account. Email/password
-                  login coming soon!
+                  Sign in with Google to access your account.
+                  <div className="flex justify-center mt-4">
+                    <div id="google-btn" className="flex justify-center" />
+                  </div>
                 </CardDescription>
               </CardHeader>
 
@@ -417,116 +187,11 @@ const LoginPage = memo(() => {
                   </Alert>
                 )}
 
-                {/* OAuth */}
-                <div className="flex justify-center mb-4">
-                  <Button
-                    variant="outline"
-                    className="w-full max-w-xs cursor-pointer"
-                    onClick={handleGoogleSignIn}
-                    disabled={loading || googleLoading}
-                    aria-label="Sign in with Google"
-                  >
-                    {googleLoading ? (
-                      <LoadingSpinner />
-                    ) : (
-                      <Chrome className="mr-2 h-4 w-4" />
-                    )}
-                    {googleLoading
-                      ? "Authenticating..."
-                      : "Sign in with Google"}
-                  </Button>
-                </div>
-
-                <div className="my-4 flex items-center gap-4">
-                  <Separator className="flex-1" />
-                  <span className="text-xs text-slate-500">or</span>
-                  <Separator className="flex-1" />
-                </div>
-
-                {/* Email / Password Form - Disabled since backend doesn't support it */}
-                <div className="space-y-4 opacity-50 pointer-events-none">
-                  {!isLogin && (
-                    <div className="grid gap-2">
-                      <Label htmlFor="username">Username (Coming Soon)</Label>
-                      <Input
-                        id="username"
-                        name="username"
-                        type="text"
-                        placeholder="Enter your username"
-                        value={formData.username}
-                        onChange={handleInputChange}
-                        disabled
-                      />
-                    </div>
-                  )}
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email (Coming Soon)</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      placeholder="you@example.com"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      disabled
-                    />
+                {googleLoading && (
+                  <div className="mt-4 text-center text-sm text-slate-500">
+                    Processing Google login...
                   </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password (Coming Soon)</Label>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                        disabled
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent cursor-pointer"
-                        onClick={togglePasswordVisibility}
-                        disabled
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4" />
-                        ) : (
-                          <Eye className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full cursor-pointer"
-                    disabled
-                  >
-                    {isLogin
-                      ? "Sign In (Coming Soon)"
-                      : "Create Account (Coming Soon)"}
-                  </Button>
-                </div>
-
-                {/* Coming Soon Notice */}
-                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <p className="text-sm text-blue-600 text-center">
-                    🔧 Email/password authentication is coming soon! For now,
-                    please use Google sign-in above.
-                  </p>
-                </div>
-
-                {/* Toggle between login/register - Disabled since backend doesn't support registration */}
-                <div className="mt-4 text-center opacity-50">
-                  <span className="text-sm text-slate-500">
-                    Registration coming soon! Use Google sign-in for now.
-                  </span>
-                </div>
+                )}
 
                 {/* Meta */}
                 <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
