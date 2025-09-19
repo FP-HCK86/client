@@ -1,6 +1,7 @@
 // src/layout/SidebarLayout.jsx
 import React, { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import {
   Sidebar,
   SidebarBody,
@@ -47,11 +48,6 @@ const menuItems = [
         label: "Video Upload",
         href: "/videos/upload",
         icon: <IconUpload className="h-4 w-4" />,
-      },
-      {
-        label: "Video Detail",
-        href: "/videos/id",
-        icon: <IconVideo className="h-4 w-4" />,
       },
     ],
   },
@@ -120,6 +116,15 @@ function LogoIcon() {
 export default function SidebarLayout() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="h-screen w-full flex bg-gray-100">

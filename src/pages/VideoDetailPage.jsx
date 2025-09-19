@@ -1,5 +1,7 @@
-import React from "react";
-import { Film, Clock, Copy, Check, Calendar } from "lucide-react";
+// src/pages/VideoDetailPage.jsx
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Film, Clock, Copy, Calendar, Edit, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,100 +11,198 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import api from "../api/client";
 
-// Simplified static-only component. All logic, handlers and hooks removed.
 export default function VideoDetailPage() {
-  // Hardcoded static data (was previously dynamic)
-  const video = {
-    id: "v-001",
-    title: "Tutorial Editing Cepat: Trim, Jump-cut, Musik",
-    url: "",
-    durationSec: 134,
-    uploadedAt: "2025-09-11T12:00:00.000Z",
-    sizeBytes: 88000000,
-  };
+  const { id } = useParams(); // route: /videos/:id
+  const navigate = useNavigate();
+  const [video, setVideo] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [msg, setMsg] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    caption: "",
+    hashtags: "",
+  });
 
-  const insights = {
-    transcriptSegments: [
-      {
-        start: 0,
-        end: 12,
-        text: "Halo semuanya! Di video ini kita akan bahas 3 trik editing cepat untuk Reels.",
-      },
-      {
-        start: 12,
-        end: 35,
-        text: "Trik pertama adalah trimming bagian jeda agar ritme terasa cepat.",
-      },
-      {
-        start: 35,
-        end: 62,
-        text: "Trik kedua: jump-cut untuk pindah antar kalimat tanpa jeda panjang.",
-      },
-    ],
-    hooks: [
-      { time: 0, label: "Stop scroll 5 detik!" },
-      { time: 12, label: "Trim jeda = ritme naik" },
-      { time: 35, label: "Jump-cut biar padat" },
-    ],
-    captions: [
-      "3 trik editing cepat untuk Reels kamu 🚀",
-      "Boost kontenmu: trim, cut, musik yang pas!",
-    ],
-    hashtags: ["#videoediting", "#contentcreator", "#reels"],
-  };
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await api.get(`/videos/${id}`);
+        if (!mounted) return;
+        // ekspektasi backend: { video: {...} }
+        setVideo(data?.video || null);
+        if (data?.video) {
+          setEditForm({
+            title: data.video.title || "",
+            caption: data.video.caption || "",
+            hashtags: data.video.hashtags || "",
+          });
+        }
+        if (!data?.video) setMsg("Video tidak ditemukan.");
+      } catch (e) {
+        if (!mounted) return;
+        setMsg(e?.response?.data?.error || "Gagal memuat detail video.");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
 
-  // Simple format helpers (pure functions, no side effects)
   const fmtDate = (iso) =>
-    new Date(iso).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+    iso
+      ? new Date(iso).toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : "—";
   const fmtDuration = (s) => {
+    if (s === undefined || s === null) return "—";
     const m = Math.floor(s / 60);
     const sec = Math.floor(s % 60)
       .toString()
       .padStart(2, "0");
     return `${m}:${sec}`;
   };
-  const fmtTime = (s) => fmtDuration(s);
+  const fmtTime = fmtDuration;
+
+  // Edit functions
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    // Reset form to original values
+    if (video) {
+      setEditForm({
+        title: video.title || "",
+        caption: video.caption || "",
+        hashtags: video.hashtags || "",
+      });
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      setMsg("");
+      const { data } = await api.patch(`/videos/${id}`, editForm);
+      setVideo(data.video);
+      setIsEditing(false);
+      setMsg("Video berhasil diperbarui.");
+      setTimeout(() => setMsg(""), 3000);
+    } catch (e) {
+      setMsg(e?.response?.data?.error || "Gagal memperbarui video.");
+    }
+  };
+
+  const handleFormChange = (field, value) => {
+    setEditForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // fallback data opsional bila backend belum sediakan insight
+  const transcriptSegments = video?.transcriptSegments || [];
+  const captions = video?.ai_captions || []; // misal backend isi di field ini
+  const hashtagsArr = Array.isArray(video?.ai_hashtags)
+    ? video.ai_hashtags
+    : video?.hashtags
+    ? String(video.hashtags).split(/\s+/).filter(Boolean)
+    : [];
+
+  const title = video?.title || "Tanpa judul";
+  const uploadedAt = video?.createdAt || video?.uploadedAt;
+  const durationSec = video?.duration_sec ?? video?.durationSec;
+  const secureUrl = video?.secure_url || video?.url || "";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
       <div className="px-4 py-6 md:px-10 md:py-10 lg:px-15 lg:py-2">
         {/* Header */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-                {video.title}
-              </h1>
+              {isEditing ? (
+                <div className="space-y-2">
+                  <Label htmlFor="title">Judul Video</Label>
+                  <Input
+                    id="title"
+                    value={editForm.title}
+                    onChange={(e) => handleFormChange("title", e.target.value)}
+                    className="text-2xl md:text-3xl font-semibold tracking-tight h-auto py-1 border-none shadow-none px-0 focus-visible:ring-0"
+                    placeholder="Masukkan judul video..."
+                  />
+                </div>
+              ) : (
+                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
+                  {loading ? "Memuat…" : title}
+                </h1>
+              )}
               <p className="text-slate-600 text-sm mt-1">
-                Diunggah {fmtDate(video.uploadedAt)} · Durasi {fmtDuration(video.durationSec)}
+                {loading ? (
+                  ""
+                ) : (
+                  <>
+                    Diunggah {fmtDate(uploadedAt)} · Durasi{" "}
+                    {fmtDuration(durationSec)}
+                  </>
+                )}
               </p>
             </div>
           </div>
-          <div>
-            <Button>
-              <Calendar className="mr-2 h-4 w-4" /> Schedule Post
-            </Button>
+          <div className="flex gap-2">
+            {isEditing ? (
+              <>
+                <Button onClick={handleSaveEdit} variant="default">
+                  <Save className="mr-2 h-4 w-4" /> Simpan
+                </Button>
+                <Button onClick={handleCancelEdit} variant="outline">
+                  <X className="mr-2 h-4 w-4" /> Batal
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button onClick={handleEditClick} variant="outline">
+                  <Edit className="mr-2 h-4 w-4" /> Edit
+                </Button>
+                <Button onClick={() => navigate("/schedule/create")}>
+                  <Calendar className="mr-2 h-4 w-4" /> Schedule Post
+                </Button>
+              </>
+            )}
           </div>
         </div>
+        {msg && <div className="mb-4 text-sm text-red-600">{msg}</div>}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Kolom video */}
           <Card className="lg:col-span-2 overflow-hidden">
             <div className="relative aspect-square max-w-sm mx-auto w-full bg-black/5">
-              {/* static placeholder view (no video element) */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 bg-black/80">
-                <Film className="h-10 w-10" />
-                <span className="text-sm text-white/80">(Preview video akan tampil di sini)</span>
-                <Button size="sm" variant="secondary">Play</Button>
-              </div>
+              {secureUrl ? (
+                <video
+                  src={secureUrl}
+                  controls
+                  className="h-full w-full object-contain bg-black"
+                />
+              ) : (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 bg-black/80">
+                  <Film className="h-10 w-10" />
+                  <span className="text-sm text-white/80">
+                    (Preview video akan tampil di sini)
+                  </span>
+                </div>
+              )}
               <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs text-white">
-                <Clock className="h-3.5 w-3.5" /> 0:00 / {fmtDuration(video.durationSec)}
+                <Clock className="h-3.5 w-3.5" /> 0:00 /{" "}
+                {fmtDuration(durationSec)}
               </div>
             </div>
           </Card>
@@ -111,110 +211,109 @@ export default function VideoDetailPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Insight Ringkas</CardTitle>
-              <CardDescription>Hook timeline, caption & hashtag siap pakai.</CardDescription>
+              <CardDescription>Caption & hashtag siap pakai.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Hooks */}
-              <div>
-                <div className="mb-2 text-sm font-medium">Hook (timeline)</div>
-                <div className="flex flex-col gap-2">
-                  {insights.hooks.map((h, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-xl border px-3 py-2 text-left">
-                      <span className="text-sm">{h.label}</span>
-                      <Badge variant="secondary">{fmtTime(h.time)}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Captions */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium">Caption</span>
-                  <Button size="sm" variant="ghost">
-                    <Copy className="mr-2 h-4 w-4" /> Copy
-                  </Button>
+                  {!isEditing && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        const text = captions?.[0] || video?.caption || "";
+                        if (text) navigator.clipboard.writeText(text);
+                      }}
+                    >
+                      <Copy className="mr-2 h-4 w-4" /> Copy
+                    </Button>
+                  )}
                 </div>
-                <div className="flex flex-col gap-2">
-                  {insights.captions.map((c, i) => (
-                    <div key={i} className="rounded-xl border p-3 text-sm">{c}</div>
-                  ))}
-                </div>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="caption">Caption</Label>
+                    <Textarea
+                      id="caption"
+                      value={editForm.caption}
+                      onChange={(e) =>
+                        handleFormChange("caption", e.target.value)
+                      }
+                      placeholder="Masukkan caption video..."
+                      rows={3}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {(captions.length
+                      ? captions
+                      : video?.caption
+                      ? [video.caption]
+                      : []
+                    ).map((c, i) => (
+                      <div key={i} className="rounded-xl border p-3 text-sm">
+                        {c}
+                      </div>
+                    ))}
+                    {(!captions || captions.length === 0) &&
+                      !video?.caption && (
+                        <div className="text-xs text-slate-500">
+                          Belum ada caption.
+                        </div>
+                      )}
+                  </div>
+                )}
               </div>
 
               {/* Hashtags */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium">Hashtag</span>
-                  <Button size="sm" variant="ghost">
-                    <Copy className="mr-2 h-4 w-4" /> Copy
-                  </Button>
+                  {!isEditing && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        const t = hashtagsArr.join(" ");
+                        if (t) navigator.clipboard.writeText(t);
+                      }}
+                    >
+                      <Copy className="mr-2 h-4 w-4" /> Copy
+                    </Button>
+                  )}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {insights.hashtags.map((h, i) => (
-                    <Badge key={i} variant="outline">{h}</Badge>
-                  ))}
-                </div>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="hashtags">Hashtags</Label>
+                    <Input
+                      id="hashtags"
+                      value={editForm.hashtags}
+                      onChange={(e) =>
+                        handleFormChange("hashtags", e.target.value)
+                      }
+                      placeholder="Masukkan hashtags (pisahkan dengan spasi)..."
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {hashtagsArr.length > 0 ? (
+                      hashtagsArr.map((h, i) => (
+                        <Badge key={i} variant="outline">
+                          {h.startsWith("#") ? h : `#${h}`}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-xs text-slate-500">
+                        Belum ada hashtag.
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
-
-        {/* Transcript & Detail */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Detail & Transcript</CardTitle>
-            <CardDescription>Klik baris transcript untuk seek ke waktu terkait.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="transcript" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="transcript">Transcript</TabsTrigger>
-                <TabsTrigger value="hooks">Hooks</TabsTrigger>
-                <TabsTrigger value="about">Info</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="transcript" className="mt-4">
-                <div className="max-h-72 overflow-auto rounded-xl border">
-                  {insights.transcriptSegments.map((seg, i) => (
-                    <div key={i} className="flex items-start gap-3 px-3 py-2 text-sm border-b last:border-b-0">
-                      <Badge variant="secondary">{fmtTime(seg.start)}</Badge>
-                      <p className="leading-relaxed">{seg.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="hooks" className="mt-4">
-                <div className="flex flex-col gap-2">
-                  {insights.hooks.map((h, i) => (
-                    <div key={i} className="flex items-center justify-between rounded-xl border px-3 py-2 text-left">
-                      <span className="text-sm">{h.label}</span>
-                      <Badge variant="secondary">{fmtTime(h.time)}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="about" className="mt-4">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div className="rounded-xl border p-3 text-sm">
-                    <div className="text-xs text-slate-500">Video ID</div>
-                    <div className="font-medium">{video.id}</div>
-                  </div>
-                  <div className="rounded-xl border p-3 text-sm">
-                    <div className="text-xs text-slate-500">Tanggal Upload</div>
-                    <div className="font-medium">{fmtDate(video.uploadedAt)}</div>
-                  </div>
-                  <div className="rounded-xl border p-3 text-sm">
-                    <div className="text-xs text-slate-500">Durasi</div>
-                    <div className="font-medium">{fmtDuration(video.durationSec)}</div>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
