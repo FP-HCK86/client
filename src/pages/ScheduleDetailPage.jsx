@@ -1,29 +1,34 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { CalendarDays, Clock, Video, Hash, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import api from "../api/client";
 
 export default function ScheduleDetailPage() {
-  
-  // Hardcoded static data (all logic removed per request). Styles preserved.
-  const schedule = {
-    id: "s-101",
-    platform: "Instagram",
-    datetime: "2025-09-16T09:30:00+07:00",
-    status: "pending",
-    caption: "3 trik editing cepat untuk Reels kamu 🚀",
-    hashtags: ["#videoediting", "#contentcreator", "#reels", "#tips", "#indonesia"],
-    video: {
-      id: "v-003",
-      title: "Hook Video: Bikin Nempel!",
-      url: "",
-      durationSec: 59,
-      uploadedAt: "2025-09-10T10:00:00+07:00",
-    },
-    createdAt: "2025-09-12T08:00:00+07:00",
-    updatedAt: "2025-09-13T12:00:00+07:00",
-  };
+  const { id } = useParams();
+  const [schedule, setSchedule] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        const { data } = await api.get(`/schedules/${id}`);
+        setSchedule(data.schedule);
+      } catch (err) {
+        setError(err.response?.data?.error || "Failed to fetch schedule");
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (id) fetchSchedule();
+  }, [id]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
+  if (!schedule) return <div className="min-h-screen flex items-center justify-center">Schedule not found</div>;
 
   const fmtDateTime = (iso) => new Date(iso).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -48,12 +53,11 @@ export default function ScheduleDetailPage() {
           <div className="flex items-center gap-2">
             <div>
               <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Schedule Detail</h1>
-              <p className="text-slate-600 text-sm mt-1">ID: {schedule.id}</p>
+              <p className="text-slate-600 text-sm mt-1">ID: {schedule._id}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline">Edit</Button>
-            <Button variant="outline">Trigger Now</Button>
             <Button variant="ghost">Delete</Button>
           </div>
         </div>
@@ -62,9 +66,9 @@ export default function ScheduleDetailPage() {
           {/* Video preview */}
           <Card className="lg:col-span-2 overflow-hidden">
             <div className="relative aspect-square max-w-sm mx-auto w-full bg-black/5">
-              {schedule.video.url ? (
+              {schedule.video_id?.secure_url ? (
                 <video
-                  src={schedule.video.url}
+                  src={schedule.video_id.secure_url}
                   className="absolute inset-0 h-full w-full object-contain bg-black"
                   controls
                   playsInline
@@ -76,13 +80,13 @@ export default function ScheduleDetailPage() {
                 </div>
               )}
               <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs text-white">
-                <Clock className="h-3.5 w-3.5" /> {fmtDuration(schedule.video.durationSec)}
+                <Clock className="h-3.5 w-3.5" /> {fmtDuration(schedule.video_id?.duration_sec || 0)}
               </div>
             </div>
             <CardContent>
               <div className="flex items-center justify-between">
-                <div className="text-sm text-slate-600">Video: <a className="underline" href={`/videos/${schedule.video.id}`}>{schedule.video.title}</a></div>
-                <div className="text-sm text-slate-600">Uploaded {fmtDate(schedule.video.uploadedAt)}</div>
+                <div className="text-sm text-slate-600">Video: <a className="underline" href={`/videos/${schedule.video_id?._id}`}>{schedule.video_id?.title}</a></div>
+                <div className="text-sm text-slate-600">Uploaded {fmtDate(schedule.video_id?.createdAt)}</div>
               </div>
             </CardContent>
           </Card>
@@ -100,7 +104,7 @@ export default function ScheduleDetailPage() {
               </div>
               <div className="rounded-xl border p-3 text-sm">
                 <div className="text-xs text-slate-500">Waktu Terjadwal</div>
-                <div className="mt-0.5 font-medium flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {fmtDateTime(schedule.datetime)}</div>
+                <div className="mt-0.5 font-medium flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {fmtDateTime(schedule.scheduled_at)}</div>
               </div>
 
               <div>
@@ -114,7 +118,7 @@ export default function ScheduleDetailPage() {
               <div>
                 <div className="mb-1 text-sm font-medium flex items-center gap-2"><Hash className="h-4 w-4" /> Hashtags</div>
                 <div className="flex flex-wrap gap-2">
-                  {schedule.hashtags.map((h, i) => (
+                  {(schedule.hashtags || "").split(/\s+/).filter(Boolean).map((h, i) => (
                     <Badge key={i} variant="outline">{h}</Badge>
                   ))}
                 </div>

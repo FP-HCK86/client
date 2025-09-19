@@ -16,6 +16,7 @@ import { getMonthMatrix, getWeekRange } from "@/lib/calendarMatrix";
 import { getEventsOnDate } from "@/lib/eventHelpers";
 import { formatDateHead, formatDayNum, formatWeekdayShort, formatTime } from "@/lib/formatters";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
+import { useNavigate } from "react-router-dom";
 
 export default function ScheduleCalendarPage({
   onOpenEvent,
@@ -28,6 +29,7 @@ export default function ScheduleCalendarPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Fetch schedules based on current view and date
   useEffect(() => {
@@ -73,7 +75,7 @@ export default function ScheduleCalendarPage({
 
   const openEvent = (id) => {
     if (onOpenEvent) return onOpenEvent(id);
-    if (typeof window !== "undefined") window.location.href = `/schedule/${id}`;
+    navigate('/schedules/' + id);
   };
 
   const createSchedule = () => {
