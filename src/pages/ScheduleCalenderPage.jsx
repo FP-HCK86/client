@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   CalendarDays,
   ChevronLeft,
@@ -9,63 +9,57 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import axios from "axios";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ScheduleCalendarPage({
   onOpenEvent,
   onCreateSchedule,
 }) {
   // views: month | week | day
-  const [view, setView] = React.useState("month");
-  const [currentDate, setCurrentDate] = React.useState(new Date());
-  const [selectedDate, setSelectedDate] = React.useState(new Date());
+  const [view, setView] = useState("month");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [schedules, setSchedules] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { user } = useAuth();
 
-  const events = React.useMemo(
-    () => [
-      {
-        id: "s-101",
-        title: "IG Reels: Editing cepat",
-        platform: "Instagram",
-        start: "2025-09-13T10:00:00+07:00",
-        end: "2025-09-13T10:30:00+07:00",
-      },
-      {
-        id: "s-102",
-        title: "TikTok: Hook 3 detik",
-        platform: "TikTok",
-        start: "2025-09-14T19:00:00+07:00",
-        end: "2025-09-14T19:15:00+07:00",
-      },
-      {
-        id: "s-103",
-        title: "YouTube Shorts: Lighting",
-        platform: "YouTube",
-        start: "2025-09-16T09:30:00+07:00",
-        end: "2025-09-16T10:00:00+07:00",
-      },
-      {
-        id: "s-104",
-        title: "IG Carousel: Hashtag 2025",
-        platform: "Instagram",
-        start: "2025-09-16T14:00:00+07:00",
-        end: "2025-09-16T14:20:00+07:00",
-      },
-      {
-        id: "s-105",
-        title: "TikTok: Transisi keren",
-        platform: "TikTok",
-        start: "2025-09-18T20:30:00+07:00",
-        end: "2025-09-18T20:45:00+07:00",
-      },
-      {
-        id: "s-106",
-        title: "YT: Upload workflow",
-        platform: "YouTube",
-        start: "2025-09-20T08:00:00+07:00",
-        end: "2025-09-20T08:30:00+07:00",
-      },
-    ],
-    []
-  );
+  // Fetch schedules based on current view and date
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      if (!user) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await axios.get("/schedules");
+        setSchedules(response.data.schedules || []);
+      } catch (err) {
+        setError(err.message || "Failed to fetch schedules");
+        console.error("Error fetching schedules:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSchedules();
+  }, [user]); // Fetch once on mount, or when user changes
+
+  const events = useMemo(() => {
+    return schedules
+      .filter((s) => s.status !== "failed") // Exclude failed schedules
+      .map((s) => {
+        const start = new Date(s.scheduled_at);
+        const end = new Date(start.getTime() + (s.cover_time || 900) * 1000); // Default 15 min if no cover_time
+        return {
+          id: s._id,
+          title: s.caption || `Post to ${s.platform}`,
+          platform: s.platform,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          status: s.status,
+        };
+      });
+  }, [schedules]);
 
   // --- Helpers tanggal ---
   const startOfDay = (d) =>
@@ -78,13 +72,13 @@ export default function ScheduleCalendarPage({
     a.getDate() === b.getDate();
   // const sameMonth = (a, b) =>
   //   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
-  const startOfWeekMonday = React.useCallback((d) => {
+  const startOfWeekMonday = useCallback((d) => {
     const day = (d.getDay() + 6) % 7; // 0=Mon ... 6=Sun
     const start = addDays(startOfDay(d), -day);
     return start;
   }, []);
 
-  const monthMatrix = React.useMemo(() => {
+  const monthMatrix = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
 
@@ -112,7 +106,7 @@ export default function ScheduleCalendarPage({
     }
 
     // Add days of the month
-    days.forEach(day => {
+    days.forEach((day) => {
       if (currentWeek.length === 7) {
         weeks.push(currentWeek);
         currentWeek = [];
@@ -129,7 +123,7 @@ export default function ScheduleCalendarPage({
     return weeks;
   }, [currentDate]);
 
-  const weekRange = React.useMemo(() => {
+  const weekRange = useMemo(() => {
     const start = startOfWeekMonday(currentDate);
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [currentDate, startOfWeekMonday]);
@@ -204,7 +198,10 @@ export default function ScheduleCalendarPage({
             </p>
           </div>
           <div className="flex gap-2">
-            <Button onClick={createSchedule} className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation">
+            <Button
+              onClick={createSchedule}
+              className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+            >
               <Plus className="mr-2 h-4 w-4" /> Create Schedule
             </Button>
           </div>
@@ -213,15 +210,31 @@ export default function ScheduleCalendarPage({
         {/* Toolbar */}
         <Card className="mt-6">
           <CardContent className="p-4">
+            {loading && (
+              <div className="text-center py-4">Loading schedules...</div>
+            )}
+            {error && (
+              <div className="text-center py-4 text-red-500">{error}</div>
+            )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="icon" className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation" onClick={gotoPrev}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+                  onClick={gotoPrev}
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <div className="min-w-[140px] sm:min-w-[180px] text-center text-sm sm:text-base font-medium">
                   {formatDateHead(currentDate)}
                 </div>
-                <Button variant="outline" size="icon" className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation" onClick={gotoNext}>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+                  onClick={gotoNext}
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button
@@ -309,37 +322,37 @@ export default function ScheduleCalendarPage({
                         </button>
                       </div>
 
-                    <div className="space-y-1">
-                      {dayEvents.slice(0, 3).map((ev) => (
-                        <div
-                          key={ev.id}
-                          onClick={() => openEvent(ev.id)}
-                          className="cursor-pointer truncate rounded-md bg-black px-2 py-1.5 sm:py-1 text-xs sm:text-[11px] text-white hover:opacity-90 touch-manipulation"
-                          title={`${ev.title} • ${formatTime(
-                            ev.start
-                          )}-${formatTime(ev.end)}`}
-                        >
-                          <span className="font-medium">{ev.title}</span>
-                          <span className="ml-2 opacity-80">
-                            {formatTime(ev.start)}
-                          </span>
-                        </div>
-                      ))}
-                      {dayEvents.length > 3 && (
-                        <button
-                          className="text-xs sm:text-[11px] text-slate-600 hover:underline touch-manipulation"
-                          onClick={() => {
-                            setView("day");
-                            setCurrentDate(date);
-                            setSelectedDate(date);
-                          }}
-                        >
-                          +{dayEvents.length - 3} more
-                        </button>
-                      )}
+                      <div className="space-y-1">
+                        {dayEvents.slice(0, 3).map((ev) => (
+                          <div
+                            key={ev.id}
+                            onClick={() => openEvent(ev.id)}
+                            className="cursor-pointer truncate rounded-md bg-black px-2 py-1.5 sm:py-1 text-xs sm:text-[11px] text-white hover:opacity-90 touch-manipulation"
+                            title={`${ev.title} • ${formatTime(
+                              ev.start
+                            )}-${formatTime(ev.end)}`}
+                          >
+                            <span className="font-medium">{ev.title}</span>
+                            <span className="ml-2 opacity-80">
+                              {formatTime(ev.start)}
+                            </span>
+                          </div>
+                        ))}
+                        {dayEvents.length > 3 && (
+                          <button
+                            className="text-xs sm:text-[11px] text-slate-600 hover:underline touch-manipulation"
+                            onClick={() => {
+                              setView("day");
+                              setCurrentDate(date);
+                              setSelectedDate(date);
+                            }}
+                          >
+                            +{dayEvents.length - 3} more
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
+                  );
                 })
               )}
             </div>
@@ -353,12 +366,18 @@ export default function ScheduleCalendarPage({
                 const list = eventsOnDate(d);
                 const isToday = sameDay(d, new Date());
                 return (
-                  <div key={d.toISOString()} className="rounded-xl border p-3 sm:p-4">
+                  <div
+                    key={d.toISOString()}
+                    className="rounded-xl border p-3 sm:p-4"
+                  >
                     <div className="mb-3 flex items-center justify-between">
                       <div className="text-sm sm:text-xs text-slate-500 font-medium">
                         {formatWeekdayShort(d)}
                       </div>
-                      <Badge variant={isToday ? "default" : "secondary"} className="text-xs">
+                      <Badge
+                        variant={isToday ? "default" : "secondary"}
+                        className="text-xs"
+                      >
                         {formatDayNum(d)}
                       </Badge>
                     </div>
@@ -382,7 +401,21 @@ export default function ScheduleCalendarPage({
                             <span>
                               {formatTime(ev.start)}–{formatTime(ev.end)}
                             </span>
-                            <Badge variant="outline" className="text-xs">{ev.platform}</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {ev.platform}
+                            </Badge>
+                            <Badge
+                              variant={
+                                ev.status === "posted"
+                                  ? "default"
+                                  : ev.status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                              className="text-xs"
+                            >
+                              {ev.status}
+                            </Badge>
                           </div>
                         </button>
                       ))}
@@ -463,6 +496,17 @@ export default function ScheduleCalendarPage({
                               {formatTime(ev.start)}–{formatTime(ev.end)}
                             </span>
                             <Badge variant="outline">{ev.platform}</Badge>
+                            <Badge
+                              variant={
+                                ev.status === "posted"
+                                  ? "default"
+                                  : ev.status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
+                              }
+                            >
+                              {ev.status}
+                            </Badge>
                           </div>
                         </div>
                         <Badge>
@@ -482,7 +526,10 @@ export default function ScheduleCalendarPage({
               <CardContent className="p-4">
                 <div className="text-sm font-medium mb-2">Quick Actions</div>
                 <div className="flex flex-col gap-2">
-                  <Button onClick={createSchedule} className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation">
+                  <Button
+                    onClick={createSchedule}
+                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+                  >
                     <Plus className="mr-2 h-4 w-4" /> Create Schedule
                   </Button>
                   <Button
