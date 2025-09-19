@@ -19,10 +19,9 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  CheckCircle2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth.jsx";
-import toast, { Toaster } from "react-hot-toast";
+import { useToast } from "@/hooks/use-toast";
 
 // Environment variables for production
 const GOOGLE_CLIENT_ID =
@@ -50,14 +49,6 @@ const LoadingSpinner = memo(() => (
   </div>
 ));
 
-// Success Component
-const SuccessMessage = memo(({ message }) => (
-  <div className="flex items-center space-x-2 text-green-600 bg-green-50 p-3 rounded-md border border-green-200">
-    <CheckCircle2 className="h-5 w-5" />
-    <span className="text-sm">{message}</span>
-  </div>
-));
-
 const LoginPage = memo(() => {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -69,10 +60,10 @@ const LoginPage = memo(() => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
 
   const { login, register, googleLogin, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Memoized validation
   const validationErrors = useMemo(() => {
@@ -122,7 +113,11 @@ const LoginPage = memo(() => {
       } catch (error) {
         console.error("Google OAuth initialization failed:", error);
         if (isMounted) {
-          toast.error("Google authentication setup failed", { icon: "🔒" });
+          toast({
+            title: "Authentication Error",
+            description: "Google authentication setup failed",
+            variant: "destructive",
+          });
         }
       }
     };
@@ -141,7 +136,11 @@ const LoginPage = memo(() => {
 
       const timeout = setTimeout(() => {
         if (isMounted) {
-          toast.error("Google authentication failed to load", { icon: "⏰" });
+          toast({
+            title: "Loading Error",
+            description: "Google authentication failed to load",
+            variant: "destructive",
+          });
         }
       }, 10000);
 
@@ -153,7 +152,11 @@ const LoginPage = memo(() => {
       script.onerror = () => {
         clearTimeout(timeout);
         if (isMounted) {
-          toast.error("Failed to load Google authentication", { icon: "❌" });
+          toast({
+            title: "Script Error",
+            description: "Failed to load Google authentication",
+            variant: "destructive",
+          });
         }
       };
 
@@ -180,7 +183,6 @@ const LoginPage = memo(() => {
 
       setErrors({});
       setLoading(true);
-      setSuccessMessage("");
 
       try {
         let result;
@@ -196,35 +198,38 @@ const LoginPage = memo(() => {
 
         if (result.success) {
           if (!isLogin) {
-            setSuccessMessage("Account created successfully!");
-            toast.success("Account created successfully! ✨", {
-              icon: "🎉",
-              style: {
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              },
+            toast({
+              title: "Success!",
+              description: "Account created successfully!",
             });
             setIsLogin(true);
             setFormData({ username: "", email: "", password: "" });
           } else {
-            toast.success("Welcome back! 🚀", {
-              icon: "👋",
-              style: {
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              },
+            toast({
+              title: "Welcome back!",
+              description: "Login successful!",
             });
             navigate("/dashboard", { replace: true });
           }
         } else {
           const errorMsg = result.error || "Authentication failed";
           setErrors({ general: errorMsg });
-          toast.error(errorMsg, { icon: "⚠️" });
+          toast({
+            title: "Authentication Failed",
+            description: errorMsg,
+            variant: "destructive",
+          });
         }
       } catch (error) {
         console.error("Form submission error:", error);
         const errorMsg =
           error.message || "Authentication failed. Please try again.";
         setErrors({ general: errorMsg });
-        toast.error(errorMsg, { icon: "⚠️" });
+        toast({
+          title: "Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -243,37 +248,38 @@ const LoginPage = memo(() => {
       setErrors({});
       setGoogleLoading(true);
 
-      const loadingToast = toast.loading("Authenticating with Google... ✨", {
-        icon: "🔐",
-        style: {
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          color: "#ffffff",
-        },
+      toast({
+        title: "Authenticating...",
+        description: "Authenticating with Google",
       });
 
       try {
         const result = await googleLogin(response.credential);
-        toast.dismiss(loadingToast);
 
         if (result.success) {
-          toast.success("Google authentication successful! 🎉", {
-            icon: "✨",
-            style: {
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            },
+          toast({
+            title: "Success!",
+            description: "Google authentication successful!",
           });
           navigate("/dashboard", { replace: true });
         } else {
           const errorMsg = result.error || "Google authentication failed";
           setErrors({ general: errorMsg });
-          toast.error(errorMsg, { icon: "❌" });
+          toast({
+            title: "Authentication Failed",
+            description: errorMsg,
+            variant: "destructive",
+          });
         }
       } catch (error) {
-        toast.dismiss(loadingToast);
         console.error("Google login error:", error);
         const errorMsg = "Google authentication failed. Please try again.";
         setErrors({ general: errorMsg });
-        toast.error(errorMsg, { icon: "🚫" });
+        toast({
+          title: "Authentication Error",
+          description: errorMsg,
+          variant: "destructive",
+        });
       } finally {
         setGoogleLoading(false);
       }
@@ -286,7 +292,11 @@ const LoginPage = memo(() => {
     console.error("Google OAuth error:", error);
     const errorMsg = "Google authentication unavailable. Please try again.";
     setErrors({ general: errorMsg });
-    toast.error(errorMsg, { icon: "🔒" });
+    toast({
+      title: "Authentication Unavailable",
+      description: errorMsg,
+      variant: "destructive",
+    });
     setGoogleLoading(false);
   }, []);
 
@@ -335,7 +345,6 @@ const LoginPage = memo(() => {
   const toggleMode = useCallback(() => {
     setIsLogin((prev) => !prev);
     setErrors({});
-    setSuccessMessage("");
     setFormData({ username: "", email: "", password: "" });
   }, []);
 
@@ -350,7 +359,7 @@ const LoginPage = memo(() => {
       <div className="mx-auto max-w-6xl px-8 pt-6 flex items-center justify-between">
         <Link
           to="/"
-          className="inline-flex items-center text-sm text-slate-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+          className="inline-flex items-center text-sm text-slate-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded cursor-pointer"
           aria-label="Back to home"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
@@ -361,15 +370,24 @@ const LoginPage = memo(() => {
       {/* Main content */}
       <div className="mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center justify-center px-8 py-6">
         <div className="flex w-full items-center gap-8 lg:gap-16">
-          {/* LEFT: Hero image (hide on small screens) */}
-          <div className="hidden md:flex flex-1 items-center justify-center">
-            <div className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-black/5 shadow-2xl">
-              <img
-                src="/login-image.webp"
-                alt="Planoria preview"
-                className="h-[520px] w-[380px] md:h-[560px] md:w-[420px] lg:h-[600px] lg:w-[450px] object-cover"
-                loading="lazy"
-              />
+          {/* LEFT: Hero content (hide on small screens) */}
+          <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden min-h-[400px]">
+            <div
+              aria-hidden
+              className="absolute inset-0 w-full h-full"
+              style={{
+                background:
+                  "radial-gradient(80% 80% at 30% 50%, rgba(147,51,234,0.8) 0%, rgba(196,181,253,0.6) 30%, rgba(255,255,255,0.9) 70%, rgba(255,255,255,1) 100%)",
+                zIndex: 0,
+              }}
+            />
+            <div className="p-8 lg:p-12 relative z-10">
+              <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
+                  Create Impactful Stories with Planoria Today
+                  <span className="align-super">^</span>
+                </h1>
+              </div>
             </div>
           </div>
 
@@ -388,26 +406,21 @@ const LoginPage = memo(() => {
 
               <CardContent>
                 {/* Success Message */}
-                {successMessage && <SuccessMessage message={successMessage} />}
+                {/* {successMessage && <SuccessMessage message={successMessage} />} */}
 
                 {/* Error Display */}
                 {errors.general && (
-                  <div
-                    className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md"
-                    role="alert"
-                  >
-                    <div className="flex items-center">
-                      <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
-                      <p className="text-sm text-red-600">{errors.general}</p>
-                    </div>
-                  </div>
+                  <Alert variant="destructive" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{errors.general}</AlertDescription>
+                  </Alert>
                 )}
 
                 {/* OAuth */}
                 <div className="flex justify-center mb-4">
                   <Button
                     variant="outline"
-                    className="w-full max-w-xs"
+                    className="w-full max-w-xs cursor-pointer"
                     onClick={handleGoogleSignIn}
                     disabled={loading || googleLoading}
                     aria-label="Sign in with Google"
@@ -475,7 +488,7 @@ const LoginPage = memo(() => {
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent cursor-pointer"
                         onClick={togglePasswordVisibility}
                         disabled
                       >
@@ -488,7 +501,11 @@ const LoginPage = memo(() => {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled>
+                  <Button
+                    type="submit"
+                    className="w-full cursor-pointer"
+                    disabled
+                  >
                     {isLogin
                       ? "Sign In (Coming Soon)"
                       : "Create Account (Coming Soon)"}
@@ -514,13 +531,13 @@ const LoginPage = memo(() => {
                 <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
                   <Link
                     to="/forgot"
-                    className="hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                    className="hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 cursor-pointer"
                   >
                     Forgot password?
                   </Link>
                   <Link
                     to="/register"
-                    className="hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1"
+                    className="hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 cursor-pointer"
                   >
                     Create account
                   </Link>
@@ -534,16 +551,6 @@ const LoginPage = memo(() => {
           </div>
         </div>
       </div>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: "#363636",
-            color: "#fff",
-          },
-        }}
-      />
     </div>
   );
 });

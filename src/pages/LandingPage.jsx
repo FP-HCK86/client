@@ -183,16 +183,16 @@ export function FooterSection() {
 
           {/* Social */}
           <div className="flex items-center gap-4 text-slate-500">
-            <a href="#" aria-label="Twitter" className="hover:text-slate-900">
+            <a href="#" aria-label="Twitter" className="hover:text-slate-900 cursor-pointer">
               <Twitter size={18} />
             </a>
-            <a href="#" aria-label="Facebook" className="hover:text-slate-900">
+            <a href="#" aria-label="Facebook" className="hover:text-slate-900 cursor-pointer">
               <Facebook size={18} />
             </a>
-            <a href="#" aria-label="Instagram" className="hover:text-slate-900">
+            <a href="#" aria-label="Instagram" className="hover:text-slate-900 cursor-pointer">
               <Instagram size={18} />
             </a>
-            <a href="#" aria-label="Github" className="hover:text-slate-900">
+            <a href="#" aria-label="Github" className="hover:text-slate-900 cursor-pointer">
               <Github size={18} />
             </a>
           </div>
@@ -204,10 +204,10 @@ export function FooterSection() {
         <div className="flex flex-col gap-4 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
           <p>© {new Date().getFullYear()} Planoria, All rights reserved</p>
           <div className="flex items-center gap-6">
-            <a href="#privacy" className="hover:text-slate-900">
+            <a href="#privacy" className="hover:text-slate-900 cursor-pointer">
               Privacy Policy
             </a>
-            <a href="#terms" className="hover:text-slate-900">
+            <a href="#terms" className="hover:text-slate-900 cursor-pointer">
               Terms & Conditions
             </a>
           </div>
@@ -226,7 +226,7 @@ function GlowButton({ children }) {
       />
       <Button
         size="lg"
-        className="relative rounded-full bg-slate-900 text-white hover:bg-black"
+        className="relative rounded-full bg-slate-900 text-white hover:bg-black cursor-pointer"
       >
         {children}
       </Button>
@@ -255,7 +255,7 @@ export default function HeroSection() {
               className="h-15 w-auto"
             />
           </div>
-          <Button>Get Started</Button>
+          <Button onClick={() => window.location.href = '/login'} className="cursor-pointer">Get Started</Button>
         </div>
       </nav>
     );
@@ -286,8 +286,8 @@ export default function HeroSection() {
 
             <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <a
-                href="#apply"
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 sm:px-6 py-2.5 sm:py-3 text-white text-sm font-semibold shadow hover:bg-black transition-colors"
+                href="/login"
+                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 sm:px-6 py-2.5 sm:py-3 text-white text-sm font-semibold shadow hover:bg-black transition-colors cursor-pointer"
               >
                 Get Started
               </a>
