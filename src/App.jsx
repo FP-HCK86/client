@@ -13,6 +13,7 @@ import SidebarLayout from "./layout/SidebarLayout";
 import DashboardPage from "./pages/DashboardPage";
 import HeroSection from "./pages/LandingPage";
 import { Toaster } from "@/components/ui/toaster";
+import VideoUploadPage from "./pages/VideUploadPage";
 
 function App() {
   return (
@@ -28,7 +29,7 @@ function App() {
             <Route path="/schedules/create" element={<ScheduleCreatePage />} />
             <Route path="/schedules/:id" element={<ScheduleDetailPage />} />
             <Route path="/videos" element={<VideoLibraryPage />} />
-            <Route path="/videos/upload" element={<CanvasPage />} />
+            <Route path="/videos/upload" element={<VideoUploadPage />} />
             <Route path="/canvas" element={<CanvasPage />} />
             <Route path="/videos/:id" element={<VideoDetailPage />} />
             <Route path="/account" element={<AccountSettingsPage />} />
