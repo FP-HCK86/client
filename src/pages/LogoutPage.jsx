@@ -12,7 +12,6 @@ const LogoutPage = () => {
       try {
         // Show loading toast
         const loadingToast = toast.loading('Logging out...', {
-          icon: '🔐',
           style: {
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: '#ffffff',
@@ -26,8 +25,7 @@ const LogoutPage = () => {
         toast.dismiss(loadingToast);
 
         // Show success message
-        toast.success('Logged out successfully! 👋', {
-          icon: '👋',
+        toast.success('Logged out successfully!', {
           style: {
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           },
@@ -38,7 +36,6 @@ const LogoutPage = () => {
       } catch (error) {
         console.error('Logout error:', error);
         toast.error('Logout failed. Please try again.', {
-          icon: '❌',
         });
         // Still redirect to login even if logout fails
         navigate('/login', { replace: true });
