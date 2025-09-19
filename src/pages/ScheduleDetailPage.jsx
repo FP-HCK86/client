@@ -25,6 +25,7 @@ export default function ScheduleDetailPage() {
   const [editTime, setEditTime] = useState("");
   const [editCoverTime, setEditCoverTime] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -181,17 +182,20 @@ export default function ScheduleDetailPage() {
                   <Button
                     variant="ghost"
                     onClick={async () => {
-                      // Delete action
                       if (!confirm("Hapus schedule ini?")) return;
                       try {
+                        setDeleting(true);
                         await api.delete(`/schedules/${id}`);
                         window.location.href = "/schedules";
                       } catch (e) {
                         alert(e?.response?.data?.error || "Gagal menghapus");
+                      } finally {
+                        setDeleting(false);
                       }
                     }}
+                    disabled={deleting}
                   >
-                    Delete
+                    {deleting ? "Menghapus…" : "Delete"}
                   </Button>
                 </>
               )
