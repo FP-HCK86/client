@@ -9,12 +9,14 @@ import VideoLibraryPage from "./pages/VideoLibraryPage";
 import CanvasPage from "./pages/CanvasPage";
 import SidebarLayout from "./layout/SidebarLayout";
 import DashboardPage from "./pages/DashboardPage";
+import HeroSection from "./pages/LandingPage";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPageVisual />} />
+        <Route path="/" element={<HeroSection />} />
         <Route element={<SidebarLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/schedules" element={<ScheduleCalendarPage />} />
