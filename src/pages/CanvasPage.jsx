@@ -39,47 +39,297 @@ export default function CanvasPage() {
   const [showPersonaSelection, setShowPersonaSelection] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [showCreatePersonaForm, setShowCreatePersonaForm] = useState(false);
+  const [personaFormData, setPersonaFormData] = useState({
+    name: '',
+    contentNiche: '',
+    platformPriority: '',
+    contentStyle: '',
+    brandVoice: '',
+    targetAudience: {
+      ageGroup: '',
+      location: 'indonesia'
+    },
+    videoDurationPreference: '',
+    contentGoals: [],
+    description: '',
+    keyTopics: [],
+    isActive: false
+  });
 
-  // Fetch personas on component mount
+  // Chat History State (inside chat container)
+  const [showChatHistory, setShowChatHistory] = useState(false);
+  const [chatSessions, setChatSessions] = useState([]);
+  const [currentChatId, setCurrentChatId] = useState(null);
+
+  // Fetch personas and load chat history on component mount
   React.useEffect(() => {
-    fetchPersonas();
+    // Clear existing state
+    setPersonas([]);
+    setSelectedPersona(null);
+    setShowPersonaSelection(true);
+    setChatMessages([]);
+    setGeneratedContent(null);
+    
+    // Wait for auth token to be available
+    const checkTokenAndFetch = () => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        fetchPersonas();
+        loadChatHistory();
+      } else {
+        // Retry after short delay if token not yet available
+        setTimeout(checkTokenAndFetch, 100);
+      }
+    };
+    
+    checkTokenAndFetch();
+
+    // Cleanup function - deactivate all personas when component unmounts
+    return () => {
+      deactivateAllPersonas();
+    };
   }, []);
+
+  // Function to deactivate all personas
+  const deactivateAllPersonas = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.log('No authentication token found, skipping persona deactivation');
+        return;
+      }
+      
+      const response = await fetch('http://localhost:3000/personas/deactivate-all', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({})
+      });
+      
+      if (!response.ok) {
+        console.log('Failed to deactivate personas:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error deactivating personas:', error);
+    }
+  };
+
+  // Auto-deactivate inactive personas (run every 5 minutes)
+  React.useEffect(() => {
+    const autoDeactivateInterval = setInterval(async () => {
+      if (selectedPersona) {
+        try {
+          // Check if persona is still active and update lastUsedAt
+          const token = localStorage.getItem('authToken');
+          await fetch(`http://localhost:3000/personas/${selectedPersona._id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              ...selectedPersona,
+              lastUsedAt: new Date()
+            })
+          });
+        } catch (error) {
+          console.error('Error updating persona activity:', error);
+        }
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(autoDeactivateInterval);
+  }, [selectedPersona]);
 
   const fetchPersonas = async () => {
     try {
-      const response = await fetch("http://localhost:3000/personas/?userId=507f1f77bcf86cd799439013", {
+      console.log("Fetching personas from MongoDB...");
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.log('No authentication token found, skipping persona fetch');
+        setPersonas([]);
+        return;
+      }
+      
+      const response = await fetch("http://localhost:3000/personas/", {
         method: "GET",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         }
       });
       if (response.ok) {
         const data = await response.json();
+        console.log("Personas from MongoDB:", data.data.personas);
         setPersonas(data.data.personas);
+      } else {
+        console.error("Failed to fetch personas:", response.status, response.statusText);
+        setPersonas([]); // Clear personas if fetch fails
       }
     } catch (error) {
       console.error("Failed to fetch personas:", error);
+      setPersonas([]); // Clear personas on error
     }
   };
 
-  const handlePersonaSelect = (persona) => {
-    setSelectedPersona(persona);
+  const handlePersonaSelect = async (persona) => {
+    try {
+      // Activate persona using the dedicated activate endpoint
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:3000/personas/${persona._id}/activate`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({})
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedPersona = { ...persona, isActive: true };
+        
+        // Update personas list
+        setPersonas(personas.map(p => 
+          p._id === persona._id 
+            ? updatedPersona 
+            : { ...p, isActive: false } // Deactivate other personas
+        ));
+        
+        setSelectedPersona(updatedPersona);
+        setShowPersonaSelection(false);
+        setChatMessages([
+          {
+            role: "assistant",
+            content: `Bagus! Anda memilih persona "${persona.name}" dengan niche ${persona.contentNiche}. Sekarang ceritakan ide konten video apa yang ingin Anda buat?`
+          }
+        ]);
+      } else {
+        throw new Error("Failed to activate persona");
+      }
+    } catch (error) {
+      console.error("Error activating persona:", error);
+      // Still select the persona even if activation fails
+      setSelectedPersona(persona);
+      setShowPersonaSelection(false);
+      setChatMessages([
+        {
+          role: "assistant",
+          content: `Persona "${persona.name}" dipilih. Ada kendala teknis dalam aktivasi, tapi Anda tetap bisa melanjutkan. Ceritakan ide konten video apa yang ingin Anda buat?`
+        }
+      ]);
+    }
+  };
+
+  const handleCreateNewPersona = () => {
+    setShowCreatePersonaForm(true);
     setShowPersonaSelection(false);
     setChatMessages([
       {
-        role: "assistant",
-        content: `Bagus! Anda memilih persona "${persona.name}" dengan niche ${persona.contentNiche}. Sekarang ceritakan ide konten video apa yang ingin Anda buat?`
+        role: "assistant", 
+        content: "Mari buat persona creator baru! Silakan isi form di bawah untuk membuat persona yang sesuai dengan gaya konten Anda."
       }
     ]);
   };
 
-  const handleCreateNewPersona = () => {
-    setChatMessages([
-      {
-        role: "assistant", 
-        content: "Untuk membuat persona baru, silakan buka halaman Account Settings untuk setup persona creator Anda. Setelah itu kembali ke sini untuk membuat konten!"
+  const handlePersonaFormSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch("http://localhost:3000/personas/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...personaFormData
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const newPersona = { ...data.data.persona, isActive: true };
+        
+        // Deactivate other personas and add new one
+        const updatedPersonas = personas.map(p => ({ ...p, isActive: false }));
+        setPersonas([...updatedPersonas, newPersona]);
+        
+        // Activate the new persona
+        try {
+          const token = localStorage.getItem('authToken');
+          await fetch(`http://localhost:3000/personas/${newPersona._id}/activate`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({})
+          });
+        } catch (activationError) {
+          console.error("Error activating new persona:", activationError);
+        }
+        
+        // Select the new persona
+        setSelectedPersona(newPersona);
+        setShowPersonaSelection(false);
+        setShowCreatePersonaForm(false);
+        
+        // Reset form
+        setPersonaFormData({
+          name: '',
+          contentNiche: '',
+          platformPriority: '',
+          contentStyle: '',
+          brandVoice: '',
+          targetAudience: { ageGroup: '', location: '' },
+          videoDurationPreference: '',
+          contentGoals: []
+        });
+
+        setChatMessages([
+          {
+            role: "assistant",
+            content: `Persona "${newPersona.name}" berhasil dibuat! Sekarang ceritakan ide konten video apa yang ingin Anda buat dengan persona ini?`
+          }
+        ]);
+      } else {
+        throw new Error("Failed to create persona");
       }
-    ]);
+    } catch (error) {
+      console.error("Error creating persona:", error);
+      setChatMessages([
+        {
+          role: "assistant",
+          content: "Maaf, terjadi kesalahan saat membuat persona. Silakan coba lagi."
+        }
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFormInputChange = (field, value) => {
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      setPersonaFormData(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setPersonaFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
   };
 
   // Format AI response for better readability
@@ -106,7 +356,7 @@ export default function CanvasPage() {
 
   // Handle chat message sending
   const handleSendMessage = async () => {
-    if (!currentMessage.trim() || isLoading || showPersonaSelection) return;
+    if (!currentMessage.trim() || isLoading || showPersonaSelection || showCreatePersonaForm) return;
 
     const userMessage = { role: "user", content: currentMessage };
     const updatedMessages = [...chatMessages, userMessage];
@@ -124,14 +374,18 @@ export default function CanvasPage() {
         body: JSON.stringify({
           messages: updatedMessages,
           usePersona: selectedPersona ? true : false,
-          userId: "507f1f77bcf86cd799439013", // Test user ID
           personaId: selectedPersona?._id
         })
       });
 
-      if (!response.ok) throw new Error("Failed to get AI response");
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error Response:", errorText);
+        throw new Error(`Failed to get AI response: ${response.status} ${response.statusText}`);
+      }
 
       const data = await response.json();
+      console.log("AI Response received:", data);
       const formattedResponse = formatAiResponse(data.data.response);
       const aiMessage = { role: "assistant", content: formattedResponse };
       setChatMessages([...updatedMessages, aiMessage]);
@@ -164,9 +418,7 @@ export default function CanvasPage() {
         },
         body: JSON.stringify({
           prompt: prompt,
-          usePersona: selectedPersona ? true : false,
-          userId: "507f1f77bcf86cd799439013", // Test user ID
-          personaId: selectedPersona?._id
+          usePersona: false // Disable persona for now
         })
       });
 
@@ -202,6 +454,159 @@ export default function CanvasPage() {
   const closeImageModal = () => {
     setShowImageModal(false);
     setSelectedImage(null);
+  };
+
+  // Chat History Management Functions
+  const loadChatHistory = () => {
+    try {
+      const savedSessions = localStorage.getItem('canvasChatSessions');
+      if (savedSessions) {
+        const sessions = JSON.parse(savedSessions);
+        setChatSessions(sessions);
+      }
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      setChatSessions([]);
+    }
+  };
+
+  const saveChatSession = async (chatData) => {
+    try {
+      // Generate AI title for the chat
+      const chatTitle = await generateChatTitle(chatData.messages);
+      
+      const newSession = {
+        id: Date.now().toString(),
+        title: chatTitle,
+        messages: chatData.messages,
+        persona: chatData.persona,
+        generatedContent: chatData.generatedContent,
+        preview: chatData.messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No messages',
+        messageCount: chatData.messages.length,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      const updatedSessions = [newSession, ...chatSessions];
+      setChatSessions(updatedSessions);
+      localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
+      
+      return newSession;
+    } catch (error) {
+      console.error('Error saving chat session:', error);
+      return null;
+    }
+  };
+
+  const generateChatTitle = async (messages) => {
+    try {
+      // Get user messages for context
+      const userMessages = messages.filter(m => m.role === 'user').slice(0, 3);
+      if (userMessages.length === 0) return 'Chat Baru';
+
+      const context = userMessages.map(m => m.content).join(' ');
+      
+      const response = await fetch("http://localhost:3000/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: "Kamu adalah asisten yang membuat judul singkat untuk percakapan. Berikan judul dalam bahasa Indonesia yang menggambarkan topik utama percakapan (maksimal 5 kata). Jangan gunakan tanda kutip atau kata 'judul'."
+            },
+            {
+              role: "user", 
+              content: `Buatkan judul singkat untuk percakapan tentang: ${context}`
+            }
+          ],
+          usePersona: false
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.data.response.trim();
+      }
+    } catch (error) {
+      console.error('Error generating chat title:', error);
+    }
+    
+    // Fallback title
+    const firstUserMessage = messages.find(m => m.role === 'user')?.content || '';
+    if (firstUserMessage.length > 0) {
+      return firstUserMessage.substring(0, 30) + (firstUserMessage.length > 30 ? '...' : '');
+    }
+    return 'Chat Baru';
+  };
+
+  const handleSelectChat = (session) => {
+    setCurrentChatId(session.id);
+    setChatMessages(session.messages || []);
+    setSelectedPersona(session.persona || null);
+    setGeneratedContent(session.generatedContent || null);
+    setShowPersonaSelection(false);
+    setShowCreatePersonaForm(false);
+  };
+
+  const handleNewChat = async () => {
+    // Deactivate all personas when starting new chat
+    await deactivateAllPersonas();
+    
+    setCurrentChatId(null);
+    setChatMessages([{
+      role: "assistant",
+      content: "Halo! Sebelum kita mulai membuat konten, mari pilih persona creator Anda dulu. Apakah Anda ingin menggunakan persona yang sudah ada atau membuat persona baru?"
+    }]);
+    setGeneratedContent(null);
+    setCurrentMessage("");
+    setSelectedPersona(null);
+    setShowPersonaSelection(true);
+    setShowCreatePersonaForm(false);
+    setPersonaFormData({
+      name: '',
+      contentNiche: '',
+      platformPriority: '',
+      contentStyle: '',
+      brandVoice: '',
+      targetAudience: { ageGroup: '', location: 'indonesia' },
+      videoDurationPreference: '',
+      contentGoals: [],
+      description: '',
+      keyTopics: [],
+      isActive: false
+    });
+    
+    // Refresh personas to show updated active status
+    fetchPersonas();
+  };
+
+  const handleDeleteChat = (sessionId) => {
+    const updatedSessions = chatSessions.filter(session => session.id !== sessionId);
+    setChatSessions(updatedSessions);
+    localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
+    
+    // If we're deleting the current chat, start a new one
+    if (currentChatId === sessionId) {
+      handleNewChat();
+    }
+  };
+
+  const handleSaveCurrentChat = async () => {
+    if (chatMessages.length <= 1) return; // Don't save empty chats
+    
+    const chatData = {
+      messages: chatMessages,
+      persona: selectedPersona,
+      generatedContent: generatedContent
+    };
+    
+    const savedSession = await saveChatSession(chatData);
+    if (savedSession) {
+      setCurrentChatId(savedSession.id);
+    }
   };
 
   return (
@@ -254,15 +659,81 @@ export default function CanvasPage() {
               {/* Mode 1: Buat Konten dari Awal - Chat Interface */}
               <Card className="lg:col-span-1">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <MessageSquare className="h-5 w-5" /> Chat dengan AI
-                  </CardTitle>
-                  <CardDescription>
-                    Mulai percakapan untuk membuat konten video dari awal
-                  </CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-lg">
+                        <MessageSquare className="h-5 w-5" /> Chat dengan AI
+                      </CardTitle>
+                      <CardDescription>
+                        Mulai percakapan untuk membuat konten video dari awal
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowChatHistory(!showChatHistory)}
+                      className="flex items-center gap-1"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {showChatHistory ? 'Sembunyikan' : 'History'}
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
+                    {/* Chat History List */}
+                    {showChatHistory && (
+                      <div className="rounded-xl border bg-white p-3 max-h-[120px] overflow-y-auto">
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="text-xs font-medium text-gray-600">Chat History</div>
+                          <button
+                            onClick={handleNewChat}
+                            className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
+                          >
+                            New Chat
+                          </button>
+                        </div>
+                        {chatSessions.length > 0 ? (
+                          <div className="space-y-1">
+                            {chatSessions.map((session) => (
+                              <div key={session.id} className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleSelectChat(session)}
+                                  className={`flex-1 text-left p-2 rounded-lg text-xs border transition-colors ${
+                                    currentChatId === session.id 
+                                      ? 'bg-blue-50 border-blue-200 text-blue-800' 
+                                      : 'hover:bg-gray-50 border-gray-200'
+                                  }`}
+                                >
+                                  <div className="font-medium truncate">{session.title}</div>
+                                  <div className="text-gray-500 text-xs">
+                                    {new Date(session.createdAt).toLocaleDateString('id-ID')} • 
+                                    {session.persona && ` ${session.persona.name}`}
+                                  </div>
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteChat(session.id);
+                                  }}
+                                  className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                  title="Hapus chat"
+                                >
+                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-gray-500 text-xs">Belum ada history chat</div>
+                        )}
+                      </div>
+                    )}
+
                     <div className="h-[300px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto">
                       <div className="text-sm space-y-3">
                         {chatMessages.map((message, index) => (
@@ -296,7 +767,7 @@ export default function CanvasPage() {
                         ))}
                         
                         {/* Persona Selection UI */}
-                        {showPersonaSelection && (
+                        {showPersonaSelection && !showCreatePersonaForm && (
                           <div className="p-3 bg-white rounded-lg shadow-sm border-2 border-blue-200">
                             <div className="mb-3">
                               <strong>Pilih Persona Creator:</strong>
@@ -333,6 +804,185 @@ export default function CanvasPage() {
                             </Button>
                           </div>
                         )}
+
+                        {/* Create Persona Form */}
+                        {showCreatePersonaForm && (
+                          <div className="p-4 bg-white rounded-lg shadow-sm border-2 border-green-200">
+                            <div className="mb-3">
+                              <strong>Buat Persona Creator Baru:</strong>
+                            </div>
+                            
+                            <form onSubmit={handlePersonaFormSubmit} className="space-y-3">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">Nama Persona</label>
+                                  <input
+                                    type="text"
+                                    value={personaFormData.name}
+                                    onChange={(e) => handleFormInputChange('name', e.target.value)}
+                                    className="w-full text-xs rounded border px-2 py-1"
+                                    placeholder="e.g., Comedy Creator Budi"
+                                    required
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">Content Niche</label>
+                                  <select
+                                    value={personaFormData.contentNiche}
+                                    onChange={(e) => handleFormInputChange('contentNiche', e.target.value)}
+                                    className="w-full text-xs rounded border px-2 py-1"
+                                    required
+                                  >
+                                    <option value="">Pilih Niche</option>
+                                    <option value="food">Food</option>
+                                    <option value="fashion">Fashion</option>
+                                    <option value="tech">Tech</option>
+                                    <option value="lifestyle">Lifestyle</option>
+                                    <option value="comedy">Comedy</option>
+                                    <option value="education">Education</option>
+                                    <option value="dance">Dance</option>
+                                    <option value="beauty">Beauty</option>
+                                    <option value="fitness">Fitness</option>
+                                    <option value="travel">Travel</option>
+                                    <option value="music">Music</option>
+                                    <option value="art">Art</option>
+                                    <option value="business">Business</option>
+                                    <option value="motivation">Motivation</option>
+                                    <option value="gaming">Gaming</option>
+                                    <option value="diy">DIY</option>
+                                    <option value="pets">Pets</option>
+                                    <option value="other">Other</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">Platform Utama</label>
+                                  <select
+                                    value={personaFormData.platformPriority}
+                                    onChange={(e) => handleFormInputChange('platformPriority', e.target.value)}
+                                    className="w-full text-xs rounded border px-2 py-1"
+                                    required
+                                  >
+                                    <option value="">Pilih Platform</option>
+                                    <option value="instagram_reels">Instagram Reels</option>
+                                    <option value="tiktok">TikTok</option>
+                                    <option value="both_equally">Both Equally</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">Gaya Konten</label>
+                                  <select
+                                    value={personaFormData.contentStyle}
+                                    onChange={(e) => handleFormInputChange('contentStyle', e.target.value)}
+                                    className="w-full text-xs rounded border px-2 py-1"
+                                    required
+                                  >
+                                    <option value="">Pilih Gaya</option>
+                                    <option value="trendy_viral">Trendy Viral</option>
+                                    <option value="educational">Educational</option>
+                                    <option value="behind_scenes">Behind Scenes</option>
+                                    <option value="product_showcase">Product Showcase</option>
+                                    <option value="storytelling">Storytelling</option>
+                                    <option value="tutorial">Tutorial</option>
+                                    <option value="entertainment">Entertainment</option>
+                                    <option value="inspirational">Inspirational</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">Brand Voice</label>
+                                  <select
+                                    value={personaFormData.brandVoice}
+                                    onChange={(e) => handleFormInputChange('brandVoice', e.target.value)}
+                                    className="w-full text-xs rounded border px-2 py-1"
+                                    required
+                                  >
+                                    <option value="">Pilih Voice</option>
+                                    <option value="fun_energetic">Fun Energetic</option>
+                                    <option value="professional">Professional</option>
+                                    <option value="relatable">Relatable</option>
+                                    <option value="inspirational">Inspirational</option>
+                                    <option value="humorous">Humorous</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">Durasi Video</label>
+                                  <select
+                                    value={personaFormData.videoDurationPreference}
+                                    onChange={(e) => handleFormInputChange('videoDurationPreference', e.target.value)}
+                                    className="w-full text-xs rounded border px-2 py-1"
+                                    required
+                                  >
+                                    <option value="">Pilih Durasi</option>
+                                    <option value="15s">15 detik</option>
+                                    <option value="30s">30 detik</option>
+                                    <option value="60s">60 detik</option>
+                                    <option value="mixed">Mixed</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">Target Age</label>
+                                  <select
+                                    value={personaFormData.targetAudience.ageGroup}
+                                    onChange={(e) => handleFormInputChange('targetAudience.ageGroup', e.target.value)}
+                                    className="w-full text-xs rounded border px-2 py-1"
+                                    required
+                                  >
+                                    <option value="">Pilih Age Group</option>
+                                    <option value="gen_z_16_24">Gen Z (16-24)</option>
+                                    <option value="millennials_25_40">Millennials (25-40)</option>
+                                    <option value="gen_x_41_56">Gen X (41-56)</option>
+                                    <option value="all_ages">All Ages</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-medium mb-1">Target Location</label>
+                                  <select
+                                    value={personaFormData.targetAudience.location}
+                                    onChange={(e) => handleFormInputChange('targetAudience.location', e.target.value)}
+                                    className="w-full text-xs rounded border px-2 py-1"
+                                    required
+                                  >
+                                    <option value="">Pilih Location</option>
+                                    <option value="indonesia">Indonesia</option>
+                                    <option value="southeast_asia">Southeast Asia</option>
+                                    <option value="global">Global</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="flex gap-2 pt-2">
+                                <Button 
+                                  type="submit" 
+                                  size="sm" 
+                                  disabled={isLoading}
+                                  className="flex-1"
+                                >
+                                  {isLoading ? "Membuat..." : "Buat Persona"}
+                                </Button>
+                                <Button 
+                                  type="button"
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => {
+                                    setShowCreatePersonaForm(false);
+                                    setShowPersonaSelection(true);
+                                  }}
+                                  className="flex-1"
+                                >
+                                  Batal
+                                </Button>
+                              </div>
+                            </form>
+                          </div>
+                        )}
                         
                         {isLoading && (
                           <div className="p-3 bg-white rounded-lg shadow-sm">
@@ -344,18 +994,31 @@ export default function CanvasPage() {
                     <div className="flex gap-2 items-center">
                       <input
                         type="text"
-                        placeholder={showPersonaSelection ? "Pilih persona terlebih dahulu..." : "Ketik pesan Anda..."}
+                        placeholder={showPersonaSelection || showCreatePersonaForm ? "Pilih atau buat persona terlebih dahulu..." : "Ketik pesan Anda..."}
                         value={currentMessage}
                         onChange={(e) => setCurrentMessage(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        disabled={isLoading || showPersonaSelection}
+                        disabled={isLoading || showPersonaSelection || showCreatePersonaForm}
                         className="flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:opacity-50"
                       />
+                      {chatMessages.length > 1 && (
+                        <Button 
+                          variant="outline"
+                          size="sm" 
+                          className="h-10 w-10 p-0"
+                          onClick={handleSaveCurrentChat}
+                          title="Save Chat"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                          </svg>
+                        </Button>
+                      )}
                       <Button 
                         size="sm" 
                         className="h-10 w-10 p-0"
                         onClick={handleSendMessage}
-                        disabled={isLoading || !currentMessage.trim() || showPersonaSelection}
+                        disabled={isLoading || !currentMessage.trim() || showPersonaSelection || showCreatePersonaForm}
                       >
                         <Send className="h-4 w-4" />
                       </Button>
@@ -390,12 +1053,67 @@ export default function CanvasPage() {
                         <label className="block text-sm font-medium mb-2">
                           Script Video
                         </label>
-                        <textarea
-                          value={generatedContent?.script || ""}
-                          placeholder="Script akan muncul di sini setelah chat dengan AI..."
-                          className="min-h-[200px] w-full rounded-xl border p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
-                          readOnly
-                        />
+                        <div className="min-h-[200px] w-full rounded-xl border p-4 bg-white text-sm overflow-y-auto max-h-[400px]">
+                          {generatedContent?.script ? (
+                            <div className="script-content space-y-3">
+                              {generatedContent.script.split('\n').map((line, index) => {
+                                // Handle headers (##)
+                                if (line.startsWith('## ')) {
+                                  return (
+                                    <h3 key={index} className="text-lg font-bold text-gray-800 mt-4 mb-2 border-b pb-1">
+                                      {line.replace('## ', '').replace(/[\*\#]/g, '')}
+                                    </h3>
+                                  );
+                                }
+                                // Handle subheaders (###)
+                                if (line.startsWith('### ')) {
+                                  return (
+                                    <h4 key={index} className="text-base font-semibold text-gray-700 mt-3 mb-1">
+                                      {line.replace('### ', '').replace(/[\*\#]/g, '')}
+                                    </h4>
+                                  );
+                                }
+                                // Handle bold text (**text**)
+                                if (line.includes('**')) {
+                                  const parts = line.split(/(\*\*.*?\*\*)/g);
+                                  return (
+                                    <div key={index} className="mb-1 leading-relaxed">
+                                      {parts.map((part, partIndex) => {
+                                        if (part.startsWith('**') && part.endsWith('**')) {
+                                          return <strong key={partIndex} className="text-gray-800">{part.slice(2, -2)}</strong>;
+                                        }
+                                        return <span key={partIndex}>{part}</span>;
+                                      })}
+                                    </div>
+                                  );
+                                }
+                                // Handle bullet points (-)
+                                if (line.trim().startsWith('- ')) {
+                                  return (
+                                    <div key={index} className="ml-4 mb-1 text-gray-700">
+                                      <span className="mr-2">•</span>
+                                      {line.replace('- ', '')}
+                                    </div>
+                                  );
+                                }
+                                // Handle empty lines
+                                if (line.trim() === '') {
+                                  return <div key={index} className="h-2"></div>;
+                                }
+                                // Regular text
+                                return (
+                                  <div key={index} className="mb-1 text-gray-700 leading-relaxed">
+                                    {line}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-gray-500 italic">
+                              Script akan muncul di sini setelah chat dengan AI...
+                            </p>
+                          )}
+                        </div>
                       </TabsContent>
                       <TabsContent value="storyboard" className="mt-4">
                         <label className="block text-sm font-medium mb-2">
@@ -613,23 +1331,12 @@ export default function CanvasPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Button 
-                        variant="outline"
-                        size="sm"
-                        disabled={chatMessages.length <= 1 || isLoading}
-                        onClick={() => {
-                          const lastUserMessage = chatMessages.filter(m => m.role === 'user').pop();
-                          if (lastUserMessage) {
-                            generateFullContent(lastUserMessage.content);
-                          }
-                        }}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Generate Content
-                      </Button>
-                      <Button 
                         variant="secondary"
                         size="sm"
-                        onClick={() => {
+                        onClick={async () => {
+                          // Deactivate all personas when resetting
+                          await deactivateAllPersonas();
+                          
                           setChatMessages([{
                             role: "assistant",
                             content: "Halo! Sebelum kita mulai membuat konten, mari pilih persona creator Anda dulu. Apakah Anda ingin menggunakan persona yang sudah ada atau membuat persona baru?"
@@ -638,11 +1345,29 @@ export default function CanvasPage() {
                           setCurrentMessage("");
                           setSelectedPersona(null);
                           setShowPersonaSelection(true);
+                          setShowCreatePersonaForm(false);
+                          setPersonaFormData({
+                            name: '',
+                            contentNiche: '',
+                            platformPriority: '',
+                            contentStyle: '',
+                            brandVoice: '',
+                            targetAudience: { ageGroup: '', location: '' },
+                            videoDurationPreference: '',
+                            contentGoals: []
+                          });
+                          
+                          // Refresh personas to show updated active status
+                          fetchPersonas();
                         }}
                       >
                         Reset Chat
                       </Button>
-                      <Button disabled={!generatedContent} size="sm">
+                      <Button 
+                        disabled={!generatedContent || chatMessages.length <= 1} 
+                        size="sm"
+                        onClick={handleSaveCurrentChat}
+                      >
                         <Save className="h-4 w-4 mr-2" />
                         Simpan Hasil
                       </Button>
