@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 // Environment variables
@@ -35,7 +35,9 @@ export const AuthProvider = ({ children }) => {
       async (error) => {
         if (error.response?.status === 401) {
           // Token expired, clear auth state
-          logout();
+          localStorage.removeItem('authToken');
+          setUser(null);
+          setIsAuthenticated(false);
         }
         return Promise.reject(error);
       }
@@ -53,8 +55,9 @@ export const AuthProvider = ({ children }) => {
       try {
         const token = localStorage.getItem('authToken');
         if (token) {
-          // Since backend doesn't have verify endpoint, we'll just assume token is valid
-          // In production, you might want to add a verify endpoint to the backend
+          // If we have a token, consider the user authenticated
+          // In production, you should verify the token with the backend
+          console.log('Found stored token, auto-authenticating user');
           setUser({
             id: 'google-user',
             name: 'Google User',
@@ -73,20 +76,59 @@ export const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  // Login function - disabled since backend doesn't have this endpoint
+  // Login function
   const login = useCallback(async (email, password) => {
-    return {
-      success: false,
-      error: 'Email/password login is not available. Please use Google sign-in.'
-    };
+    try {
+      const response = await axios.post('/login', {
+        email,
+        password,
+      });
+
+      if (response.data.access_token) {
+        localStorage.setItem('authToken', response.data.access_token);
+        setUser({
+          id: response.data.user.id,
+          name: response.data.user.username,
+          email: response.data.user.email,
+        });
+        setIsAuthenticated(true);
+        return { success: true };
+      } else {
+        return { success: false, error: 'Login failed. Please try again.' };
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      const errorMessage = error.response?.data?.message || 'Invalid email or password.';
+      return { success: false, error: errorMessage };
+    }
   }, []);
 
-  // Register function - disabled since backend doesn't have this endpoint
+  // Register function
   const register = useCallback(async (username, email, password) => {
-    return {
-      success: false,
-      error: 'Registration is not available. Please use Google sign-in.'
-    };
+    try {
+      const response = await axios.post('/register', {
+        username,
+        email,
+        password,
+      });
+
+      if (response.data.access_token) {
+        localStorage.setItem('authToken', response.data.access_token);
+        setUser({
+          id: response.data.user.id,
+          name: response.data.user.username,
+          email: response.data.user.email,
+        });
+        setIsAuthenticated(true);
+        return { success: true };
+      } else {
+        return { success: true, message: 'Registration successful. Please sign in.' };
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+      return { success: false, error: errorMessage };
+    }
   }, []);
 
   // Google login function - matches backend expectation
@@ -135,7 +177,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Update user profile - disabled since backend doesn't have this endpoint
-  const updateProfile = useCallback(async (userData) => {
+  const updateProfile = useCallback(async (_userData) => {
     return {
       success: false,
       error: 'Profile update is not available in the current backend implementation.'
@@ -158,15 +200,6 @@ export const AuthProvider = ({ children }) => {
       {children}
     </AuthContext.Provider>
   );
-};
-
-// Custom hook to use auth context
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
 
 export default AuthContext;
