@@ -1,7 +1,7 @@
 // src/layout/SidebarLayout.jsx
 import React, { useState } from "react";
 import { Outlet, useLocation, Navigate } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Sidebar,
   SidebarBody,

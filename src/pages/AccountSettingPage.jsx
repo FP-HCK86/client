@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import {
   User,
   Mail,
@@ -134,9 +135,10 @@ export default function AccountSettingsPage() {
           <CardContent>
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-4">
               <div className="text-sm">Logout dari semua sesi perangkat.</div>
-              <Button variant="outline">
-                {" "}
-                <LogOut className="mr-2 h-4 w-4" /> Logout All
+              <Button variant="outline" asChild>
+                <Link to="/logout">
+                  <LogOut className="mr-2 h-4 w-4" /> Logout All
+                </Link>
               </Button>
             </div>
           </CardContent>
