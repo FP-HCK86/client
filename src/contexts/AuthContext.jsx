@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = useCallback(async (email, password) => {
     try {
-      const response = await axios.post('/login', {
+      const response = await axios.post('/auth/login', {
         email,
         password,
       });
@@ -106,7 +106,7 @@ export const AuthProvider = ({ children }) => {
   // Register function
   const register = useCallback(async (username, email, password) => {
     try {
-      const response = await axios.post('/register', {
+      const response = await axios.post('/auth/register', {
         username,
         email,
         password,
@@ -134,7 +134,7 @@ export const AuthProvider = ({ children }) => {
   // Google login function - matches backend expectation
   const googleLogin = useCallback(async (credential) => {
     try {
-      const response = await axios.post('/google-login', {}, {
+      const response = await axios.post('/auth/google-login', {}, {
         headers: {
           'id_token': credential
         }
