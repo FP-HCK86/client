@@ -36,6 +36,7 @@ export default function ScheduleCreatePage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState("");
+  const [lateInfo, setLateInfo] = useState(null); // store late post/job id
   const [loading, setLoading] = useState(true);
 
   // Fetch video user
@@ -102,6 +103,13 @@ export default function ScheduleCreatePage() {
 
       const { data } = await api.post("/schedules", body);
       setMsg(`✔ ${data?.message || "Schedule created"}`);
+      if (data?.late?.postId) {
+        setLateInfo({ postId: data.late.postId, mode: data.late.mode });
+      } else if (data?.schedule?.vendor_job_id) {
+        setLateInfo({ postId: data.schedule.vendor_job_id, mode: 'scheduled' });
+      } else {
+        setLateInfo(null);
+      }
       // window.location.href = `/schedule/${data?.schedule?._id}`;
     } catch (e) {
       setMsg(e?.response?.data?.error || "Gagal membuat schedule");
@@ -334,7 +342,8 @@ export default function ScheduleCreatePage() {
                   !selectedVideo ||
                   !caption ||
                   !date ||
-                  !time
+                  !time ||
+                  (date && time && new Date(`${date}T${time}:00`).getTime() < Date.now())
                 }
               >
                 {submitting ? "Menyimpan…" : "Simpan"}
@@ -342,6 +351,11 @@ export default function ScheduleCreatePage() {
             </CardFooter>
           </Card>
         </div>
+        {lateInfo && (
+          <div className="mt-6 text-xs text-slate-600">
+            Late job/post id: <span className="font-mono">{lateInfo.postId}</span> ({lateInfo.mode})
+          </div>
+        )}
       </div>
 
       {/* Video Picker Modal */}
