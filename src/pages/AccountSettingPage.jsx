@@ -1,15 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import {
   User,
   Mail,
   Link2,
-  Link2Off,
-  ShieldCheck,
-  ExternalLink,
-  CheckCircle2,
-  AlertCircle,
   Loader2,
   LogOut,
   Camera,
@@ -26,152 +21,261 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
+// Base URL for API calls. Override via VITE_API_BASE_URL if needed.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
+
 export default function AccountSettingsPage() {
-  const [profile, setProfile] = useState({
-    name: "",
-    email: "",
-    avatar: "",
-  });
+  const [profile, setProfile] = useState({ name: "", email: "", avatar: "" });
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const fileInputRef = useRef(null);
+  const lastConnectRef = useRef(null); // To prevent duplicate calls
   const { toast } = useToast();
 
+  const handleConnect = useCallback(async (platform) => {
+    console.log('=== HANDLE CONNECT DEBUG ===');
+    console.log('handleConnect called with platform:', platform);
+    console.log('typeof platform:', typeof platform);
+    console.log('platform value:', JSON.stringify(platform));
+    console.log('API_BASE:', API_BASE);
+    console.log('Final URL will be:', `${API_BASE}/connect/${platform}`);
+    console.log('Current connecting state:', connecting);
+    console.log('Stack trace:', new Error().stack);
+    
+    // Prevent duplicate calls within short time window
+    const now = Date.now();
+    if (lastConnectRef.current && (now - lastConnectRef.current) < 1000) {
+      console.log('Preventing duplicate call within 1 second');
+      return;
+    }
+    lastConnectRef.current = now;
+    
+    if (connecting) {
+      console.log('Already connecting, ignoring duplicate call');
+      return;
+    }
+    
+    if (!platform || typeof platform !== 'string') {
+      console.error('Invalid platform parameter:', platform);
+      toast({
+        title: "Error",
+        description: "Platform parameter is invalid",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('Setting connecting to true...');
+    setConnecting(true);
+    
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Token tidak ditemukan. Silakan login ulang.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Making request to:', `${API_BASE}/connect/${platform}`);
+      
+      const resp = await axios.get(`${API_BASE}/connect/${platform}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        maxRedirects: 0,
+        validateStatus: (status) => status < 400,
+      });
+
+      console.log('Response received:', resp.status, resp.headers, resp.data);
+
+      if (platform === 'undefined') {
+        console.error('Guard hit: platform literal string "undefined" reached success path – aborting.');
+        toast({
+          title: 'Kesalahan Platform',
+            description: 'Parameter platform tidak valid (undefined). Reload halaman dan coba lagi.',
+            variant: 'destructive'
+        });
+        return;
+      }
+      // Support new JSON mode from server
+      const redirectUrl = resp.data?.redirectUrl || resp.data?.authUrl || resp.headers?.location || resp.data?.location || resp.data?.redirect_url || resp.data?.redirectUrl;
+      if (redirectUrl) {
+        console.log('Redirecting user-agent to:', redirectUrl);
+        window.location.href = redirectUrl;
+        return;
+      }
+
+      toast({
+        title: 'Tidak ada URL OAuth',
+        description: 'Server tidak mengembalikan redirect URL. Coba lagi nanti.',
+        variant: 'destructive',
+      });
+    } catch (error) {
+      console.log('=== ERROR CAUGHT ===');
+      console.log('Error object:', error);
+      console.log('Error message:', error?.message);
+      console.log('Error response:', error?.response);
+      console.log('Error response status:', error?.response?.status);
+      console.log('Error response data:', error?.response?.data);
+      
+      const status = error?.response?.status;
+      const loc = error?.response?.headers?.location;
+      if (status === 302 && loc) {
+        console.log('Found 302 redirect to:', loc);
+        window.location.href = loc;
+        return;
+      }
+      if (status === 400 && error?.response?.data?.error?.includes('Platform undefined')) {
+        toast({
+          title: 'Platform tidak valid',
+          description: 'Front-end mengirim platform undefined. Harap refresh dan coba lagi.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      if (status === 502) {
+        toast({
+          title: 'Gagal Mendapatkan Redirect',
+          description: 'API Late tidak mengembalikan URL redirect. Coba lagi beberapa saat atau hubungi admin.',
+          variant: 'destructive'
+        });
+        return;
+      }
+      if (status === 401) {
+        toast({
+          title: "Sesi kedaluwarsa",
+          description: "Silakan login ulang.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Connection Error",
+        description:
+          (error?.response?.data && error.response.data.error) || error?.message ||
+          "Gagal memulai koneksi ke platform",
+        variant: "destructive",
+      });
+    } finally {
+      console.log('Setting connecting to false...');
+      setConnecting(false);
+    }
+  }, [connecting, toast]); // Dependencies for useCallback
+
+  // Fetch user profile on component mount
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem("authToken"); // Changed from "token" to "authToken"
-        console.log("Token from localStorage:", token ? "exists" : "missing");
-        
-        if (!token) {
-          throw new Error("No authentication token found");
-        }
-
-        console.log("Making API call to fetch profile...");
-        const response = await axios.get("http://localhost:3000/auth/profile", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const token = localStorage.getItem("authToken");
+        if (!token) throw new Error("No authentication token found");
+        const res = await axios.get(`${API_BASE}/auth/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-
-        console.log("API Response:", response.data);
-
-        if (response.data.user) {
-          const userData = {
-            name: response.data.user.username || "User",
-            email: response.data.user.email || "",
-            avatar: response.data.user.avatar || "",
-          };
-          
-          console.log("Setting profile data:", userData);
-          setProfile(userData);
+        if (res.data && res.data.user) {
+          setProfile({
+            name: res.data.user.username || "User",
+            email: res.data.user.email || "",
+            avatar: res.data.user.avatar || "",
+          });
         }
       } catch (error) {
-        console.error("Failed to fetch profile:", error);
-        console.error("Error response:", error.response?.data);
-        
         toast({
           title: "Error",
-          description: error.response?.data?.message || "Failed to load profile data",
+          description:
+            (error?.response?.data && error.response.data.message) ||
+            "Failed to load profile data",
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       } finally {
         setLoading(false);
       }
     };
-
     fetchProfile();
   }, [toast]);
 
+  /**
+   * Handle uploading a new avatar image. Performs basic client-side
+   * validation and sends the file to the backend.
+   */
   const handleAvatarUpload = async (event) => {
-    const file = event.target.files[0];
+    const file = event.target.files && event.target.files[0];
     if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       toast({
         title: "Invalid File",
         description: "Please select an image file",
         variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
       return;
     }
-
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File Too Large",
         description: "Please select an image smaller than 5MB",
         variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
       return;
     }
-
     setUploading(true);
-    
     try {
-      const token = localStorage.getItem("authToken"); // Changed from "token" to "authToken"
+      const token = localStorage.getItem("authToken");
       const formData = new FormData();
-      formData.append('avatar', file);
-
-      const response = await axios.post(
-        "http://localhost:3000/auth/upload-avatar",
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      if (response.data.user) {
-        setProfile(prev => ({
-          ...prev,
-          avatar: response.data.user.avatar,
-        }));
-        
+      formData.append("avatar", file);
+      const res = await axios.post(`${API_BASE}/auth/upload-avatar`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      if (res.data && res.data.user && res.data.user.avatar) {
+        setProfile((prev) => ({ ...prev, avatar: res.data.user.avatar }));
         toast({
           title: "Success!",
           description: "Profile picture updated successfully",
           variant: "purple",
-          className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+          className:
+            "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
         });
       }
     } catch (error) {
-      console.error("Failed to upload avatar:", error);
       toast({
         title: "Upload Failed",
-        description: error.response?.data?.message || "Failed to upload profile picture",
+        description:
+          (error?.response?.data && error.response.data.message) ||
+          "Failed to upload profile picture",
         variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
     } finally {
       setUploading(false);
     }
   };
 
+  /**
+   * Avatar subcomponent displays the user's avatar and shows an overlay
+   * button for uploading a new picture.
+   */
   const Avatar = () => (
     <div className="relative h-16 w-16 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200 group cursor-pointer">
       {profile.avatar ? (
-        <img 
-          src={profile.avatar} 
-          alt="Profile"
-          className="h-full w-full object-cover"
-        />
+        <img src={profile.avatar} alt="Profile" className="h-full w-full object-cover" />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-slate-500">
           <User className="h-7 w-7" />
         </div>
       )}
-      
-      {/* Upload overlay */}
-      <div 
-        className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={() => fileInputRef.current?.click()}
+      <div
+        className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => fileInputRef.current && fileInputRef.current.click()}
       >
         {uploading ? (
           <Loader2 className="h-5 w-5 text-white animate-spin" />
@@ -179,8 +283,6 @@ export default function AccountSettingsPage() {
           <Camera className="h-5 w-5 text-white" />
         )}
       </div>
-      
-      {/* Hidden file input */}
       <input
         ref={fileInputRef}
         type="file"
@@ -202,23 +304,16 @@ export default function AccountSettingsPage() {
     );
   }
 
-  // (data integrasi dummy tidak digunakan di UI, hapus agar bersih ESLint)
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
       <div className="mx-auto max-w-4xl px-2 py-6 md:py-10">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-              Account Settings
-            </h1>
-            <p className="text-slate-600 mt-1">
-              Kelola profil dan koneksi platform Anda.
-            </p>
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Account Settings</h1>
+            <p className="text-slate-600 mt-1">Kelola profil dan koneksi platform Anda.</p>
           </div>
         </div>
-
         {/* Profile */}
         <Card className="mt-6">
           <CardHeader>
@@ -230,8 +325,7 @@ export default function AccountSettingsPage() {
               <Avatar />
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4" />{" "}
-                  <span className="font-medium">{profile.name}</span>
+                  <User className="h-4 w-4" /> <span className="font-medium">{profile.name}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Mail className="h-4 w-4" /> {profile.email}
@@ -241,7 +335,7 @@ export default function AccountSettingsPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
                   disabled={uploading}
                 >
                   {uploading ? (
@@ -260,14 +354,11 @@ export default function AccountSettingsPage() {
             </div>
           </CardContent>
         </Card>
-
         {/* Integrations */}
         <Card className="mt-6">
           <CardHeader>
             <CardTitle className="text-lg">Integrasi Platform</CardTitle>
-            <CardDescription>
-              Hubungkan akun untuk otomatisasi posting.
-            </CardDescription>
+            <CardDescription>Hubungkan akun untuk otomatisasi posting.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Instagram */}
@@ -278,12 +369,19 @@ export default function AccountSettingsPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button>
-                  <Link2 className="mr-2 h-4 w-4" /> Connect
+                <Button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleConnect("instagram");
+                  }}
+                  disabled={connecting}
+                > 
+                  <Link2 className="mr-2 h-4 w-4" /> 
+                  {connecting ? "Connecting..." : "Connect"}
                 </Button>
               </div>
             </div>
-
             {/* TikTok */}
             <div className="flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between">
               <div>
@@ -292,8 +390,16 @@ export default function AccountSettingsPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button>
-                  <Link2 className="mr-2 h-4 w-4" /> Connect
+                <Button 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleConnect("tiktok");
+                  }}
+                  disabled={connecting}
+                > 
+                  <Link2 className="mr-2 h-4 w-4" /> 
+                  {connecting ? "Connecting..." : "Connect"}
                 </Button>
               </div>
             </div>
@@ -306,8 +412,7 @@ export default function AccountSettingsPage() {
             </div>
           </CardFooter>
         </Card>
-
-        {/* Danger Zone (opsional) */}
+        {/* Danger Zone */}
         <Card className="mt-6">
           <CardHeader>
             <CardTitle className="text-lg">Keamanan</CardTitle>

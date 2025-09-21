@@ -86,10 +86,12 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.access_token) {
         localStorage.setItem('authToken', response.data.access_token);
+        // Set user data from backend response
         setUser({
           id: response.data.user.id,
           name: response.data.user.username,
           email: response.data.user.email,
+          avatar: response.data.user.avatar
         });
         setIsAuthenticated(true);
         return { success: true };
@@ -114,13 +116,15 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.access_token) {
         localStorage.setItem('authToken', response.data.access_token);
+        // Set user data from backend response - user is now automatically logged in
         setUser({
           id: response.data.user.id,
           name: response.data.user.username,
           email: response.data.user.email,
+          avatar: response.data.user.avatar
         });
         setIsAuthenticated(true);
-        return { success: true };
+        return { success: true, message: 'Registration successful! You are now logged in.' };
       } else {
         return { success: true, message: 'Registration successful. Please sign in.' };
       }
@@ -134,19 +138,18 @@ export const AuthProvider = ({ children }) => {
   // Google login function - matches backend expectation
   const googleLogin = useCallback(async (credential) => {
     try {
-      const response = await axios.post('/auth/google-login', {}, {
-        headers: {
-          'id_token': credential
-        }
+      const response = await axios.post('/auth/google-login', {
+        credential: credential
       });
 
       if (response.data.access_token) {
         localStorage.setItem('authToken', response.data.access_token);
-        // For now, we'll create a basic user object since backend doesn't return user data
+        // Set user data from backend response
         setUser({
-          id: 'google-user',
-          name: 'Google User',
-          email: 'google@example.com'
+          id: response.data.user.id,
+          name: response.data.user.username,
+          email: response.data.user.email,
+          avatar: response.data.user.avatar
         });
         setIsAuthenticated(true);
         return { success: true };
