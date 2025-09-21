@@ -309,13 +309,13 @@ export default function ScheduleCalendarPage({
                               variant={
                                 ev.status === "posted"
                                   ? "default"
-                                  : ev.status === "pending"
+                                  : ev.status === "pending" || ev.status === "processing"
                                   ? "secondary"
                                   : "destructive"
                               }
                               className="text-xs"
                             >
-                              {ev.status}
+                              {ev.status === 'processing' ? 'processing…' : ev.status}
                             </Badge>
                           </div>
                         </button>
@@ -401,12 +401,12 @@ export default function ScheduleCalendarPage({
                               variant={
                                 ev.status === "posted"
                                   ? "default"
-                                  : ev.status === "pending"
+                                  : ev.status === "pending" || ev.status === 'processing'
                                   ? "secondary"
                                   : "destructive"
                               }
                             >
-                              {ev.status}
+                              {ev.status === 'processing' ? 'processing…' : ev.status}
                             </Badge>
                           </div>
                         </div>
