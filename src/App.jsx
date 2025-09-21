@@ -15,6 +15,8 @@ import DashboardPage from "./pages/DashboardPage";
 import HeroSection from "./pages/LandingPage";
 import { Toaster } from "@/components/ui/toaster";
 import VideoUploadPage from "./pages/VideUploadPage";
+import PaymentPage from './pages/PaymentPage';
+
 
 function App() {
   return (
@@ -25,6 +27,7 @@ function App() {
           <Route path="/register" element={<RegisterPageVisual />} />
           <Route path="/logout" element={<LogoutPage />} />
           <Route path="/" element={<HeroSection />} />
+          <Route path="/payment" element={<PaymentPage />} />
           <Route element={<SidebarLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/schedules" element={<ScheduleCalendarPage />} />
