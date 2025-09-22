@@ -11,7 +11,6 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import HoverButton from "@/components/ui/HoverButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +18,7 @@ import { ArrowLeft, AlertCircle, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth.jsx";
 import { useToast } from "@/hooks/use-toast";
+import {PointerHighlight} from "@/components/ui/pointer-highlight"
 
 const LoginPage = memo(() => {
   const { login, googleLogin, isAuthenticated } = useAuth();
@@ -270,21 +270,31 @@ const LoginPage = memo(() => {
       >
         <div className="flex w-full items-center gap-8 lg:gap-16">
           {/* LEFT: Hero content (hide on small screens) */}
-          <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden" data-aos="zoom-in" data-aos-delay="120">
+          <div
+            className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden"
+            data-aos="zoom-in"
+            data-aos-delay="120"
+          >
             <div aria-hidden className="absolute inset-0 w-full h-full" />
             <div className="p-8 lg:p-12 relative z-10">
               <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
-                  Create Impactful Stories with Planoria Today
-                  <span className="align-super">^</span>
-                </h1>
+                <PointerHighlight>
+                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
+                    Create Impactful Stories with Planoria Today
+                    <span className="align-super">^</span>
+                  </h1>
+                </PointerHighlight>
               </div>
             </div>
           </div>
 
           {/* RIGHT: Form */}
           <div className="flex-1">
-            <Card className="w-full max-w-md mx-auto" data-aos="zoom-in" data-aos-delay="80">
+            <Card
+              className="w-full max-w-md mx-auto"
+              data-aos="zoom-in"
+              data-aos-delay="80"
+            >
               <CardHeader className="space-y-2">
                 <CardTitle className="text-center text-2xl md:text-3xl">
                   Welcome
