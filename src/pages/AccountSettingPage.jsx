@@ -20,6 +20,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import HoverButton from "@/components/ui/HoverButton";
 
 // Base URL for API calls. Override via VITE_API_BASE_URL if needed.
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
@@ -31,34 +32,17 @@ export default function AccountSettingsPage() {
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [tempUsername, setTempUsername] = useState("");
   const [updating, setUpdating] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+  // Track connecting/loading per platform so only the clicked button shows loading
+  const [connectingByPlatform, setConnectingByPlatform] = useState({});
+  const connectingRef = useRef({}); // mirror for synchronous checks inside callbacks
   const fileInputRef = useRef(null);
-  const lastConnectRef = useRef(null); // To prevent duplicate calls
+  const lastConnectRef = useRef({}); // To prevent duplicate calls per platform
   const { toast } = useToast();
 
   const handleConnect = useCallback(
     async (platform) => {
       console.log("=== HANDLE CONNECT DEBUG ===");
       console.log("handleConnect called with platform:", platform);
-      console.log("typeof platform:", typeof platform);
-      console.log("platform value:", JSON.stringify(platform));
-      console.log("API_BASE:", API_BASE);
-      console.log("Final URL will be:", `${API_BASE}/connect/${platform}`);
-      console.log("Current connecting state:", connecting);
-      console.log("Stack trace:", new Error().stack);
-
-      // Prevent duplicate calls within short time window
-      const now = Date.now();
-      if (lastConnectRef.current && now - lastConnectRef.current < 1000) {
-        console.log("Preventing duplicate call within 1 second");
-        return;
-      }
-      lastConnectRef.current = now;
-
-      if (connecting) {
-        console.log("Already connecting, ignoring duplicate call");
-        return;
-      }
 
       if (!platform || typeof platform !== "string") {
         console.error("Invalid platform parameter:", platform);
@@ -70,8 +54,33 @@ export default function AccountSettingsPage() {
         return;
       }
 
-      console.log("Setting connecting to true...");
-      setConnecting(true);
+      // Prevent duplicate calls within short time window per platform
+      const now = Date.now();
+      if (
+        lastConnectRef.current?.[platform] &&
+        now - lastConnectRef.current[platform] < 1000
+      ) {
+        console.log("Preventing duplicate call within 1 second for", platform);
+        return;
+      }
+      lastConnectRef.current[platform] = now;
+
+      // If this platform is already connecting, ignore
+      if (connectingRef.current?.[platform]) {
+        console.log(
+          "Already connecting for",
+          platform,
+          "- ignoring duplicate call"
+        );
+        return;
+      }
+
+      // mark this platform as connecting
+      setConnectingByPlatform((prev) => {
+        const next = { ...(prev || {}), [platform]: true };
+        connectingRef.current = next;
+        return next;
+      });
 
       try {
         const token = localStorage.getItem("authToken");
@@ -106,7 +115,7 @@ export default function AccountSettingsPage() {
           });
           return;
         }
-        // Support new JSON mode from server
+
         const redirectUrl =
           resp.data?.redirectUrl ||
           resp.data?.authUrl ||
@@ -179,12 +188,17 @@ export default function AccountSettingsPage() {
           variant: "destructive",
         });
       } finally {
-        console.log("Setting connecting to false...");
-        setConnecting(false);
+        // unset only this platform's connecting state
+        setConnectingByPlatform((prev) => {
+          const next = { ...(prev || {}) };
+          next[platform] = false;
+          connectingRef.current = next;
+          return next;
+        });
       }
     },
-    [connecting, toast]
-  ); // Dependencies for useCallback
+    [toast]
+  );
 
   // Fetch user profile on component mount
   useEffect(() => {
@@ -418,27 +432,33 @@ export default function AccountSettingsPage() {
                         placeholder="Enter username"
                         autoFocus
                         onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleUsernameUpdate();
-                          if (e.key === 'Escape') setIsEditingUsername(false);
+                          if (e.key === "Enter") handleUsernameUpdate();
+                          if (e.key === "Escape") setIsEditingUsername(false);
                         }}
                       />
                       <Button
                         size="sm"
                         onClick={handleUsernameUpdate}
                         disabled={updating}
+                        className="btn-default hover-btn-green cursor-pointer"
                       >
-                        {updating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
+                        {updating ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          "Save"
+                        )}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setIsEditingUsername(false)}
+                        className="cursor-pointer"
                       >
                         Cancel
                       </Button>
                     </div>
                   ) : (
-                    <span 
+                    <span
                       className="font-medium cursor-pointer hover:text-purple-600 hover:underline"
                       onClick={() => {
                         setTempUsername(profile.name);
@@ -462,6 +482,7 @@ export default function AccountSettingsPage() {
                     fileInputRef.current && fileInputRef.current.click()
                   }
                   disabled={uploading}
+                  className="cursor-pointer"
                 >
                   {uploading ? (
                     <>
@@ -496,17 +517,20 @@ export default function AccountSettingsPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button
+                <HoverButton
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleConnect("instagram");
                   }}
-                  disabled={connecting}
+                  disabled={!!connectingByPlatform?.instagram}
+                  className="cursor-pointer"
                 >
                   <Link2 className="mr-2 h-4 w-4" />
-                  {connecting ? "Connecting..." : "Connect"}
-                </Button>
+                  {connectingByPlatform?.instagram
+                    ? "Connecting..."
+                    : "Connect"}
+                </HoverButton>
               </div>
             </div>
             {/* TikTok */}
@@ -517,17 +541,18 @@ export default function AccountSettingsPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button
+                <HoverButton
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     handleConnect("tiktok");
                   }}
-                  disabled={connecting}
+                  disabled={!!connectingByPlatform?.tiktok}
+                  className="cursor-pointer"
                 >
                   <Link2 className="mr-2 h-4 w-4" />
-                  {connecting ? "Connecting..." : "Connect"}
-                </Button>
+                  {connectingByPlatform?.tiktok ? "Connecting..." : "Connect"}
+                </HoverButton>
               </div>
             </div>
           </CardContent>
@@ -548,7 +573,7 @@ export default function AccountSettingsPage() {
           <CardContent>
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-4">
               <div className="text-sm">Logout dari semua sesi perangkat.</div>
-              <Button variant="outline" asChild>
+              <Button variant="outline" asChild className="cursor-pointer">
                 <Link to="/logout">
                   <LogOut className="mr-2 h-4 w-4" /> Logout All
                 </Link>

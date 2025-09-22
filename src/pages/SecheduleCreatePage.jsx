@@ -11,6 +11,7 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import HoverButton from "@/components/ui/HoverButton";
 import {
   Card,
   CardHeader,
@@ -151,21 +152,25 @@ export default function ScheduleCreatePage() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Kolom kiri: pilih + preview video */}
-          <Card className="lg:col-span-1 overflow-hidden">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+          <Card className="lg:col-span-1 overflow-hidden text-center">
+            <CardHeader className="text-center">
+              <CardTitle className="text-lg flex items-center justify-center gap-2">
                 <Video className="h-5 w-5" /> Pilih & Preview Video
               </CardTitle>
-              <CardDescription>Ambil dari Video Library kamu.</CardDescription>
+              <CardDescription className="text-center">Ambil dari Video Library kamu.</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="text-sm text-slate-600">Memuat video…</div>
               ) : !selectedVideo ? (
-                <Button onClick={() => setPickerOpen(true)}>Pilih Video</Button>
+                <div className="flex items-center justify-center">
+                  <HoverButton onClick={() => setPickerOpen(true)} className="touch-manipulation cursor-pointer">
+                    Pilih Video
+                  </HoverButton>
+                </div>
               ) : (
-                <div className="space-y-3">
-                  <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black/5 ring-1 ring-slate-200">
+                <div className="space-y-3 flex flex-col items-center">
+                  <div className="relative aspect-video w-full max-w-sm mx-auto overflow-hidden rounded-xl bg-black/5 ring-1 ring-slate-200">
                     {vUrl ? (
                       <video
                         src={vUrl}
@@ -185,23 +190,19 @@ export default function ScheduleCreatePage() {
                     </div>
                   </div>
 
-                  <div>
+                  <div className="text-center w-full max-w-sm">
                     <div className="text-sm font-medium leading-5">
                       {selectedVideo.title || "Tanpa judul"}
                     </div>
                     <div className="mt-1 text-xs text-slate-600">
-                      Diunggah {fmtDate(selectedVideo.createdAt)} • Durasi{" "}
-                      {fmtDuration(vDur)}
+                      Diunggah {fmtDate(selectedVideo.createdAt)} • Durasi {fmtDuration(vDur)}
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => setPickerOpen(true)}
-                    >
+                  <div className="flex gap-5">
+                    <HoverButton onClick={() => setPickerOpen(true)} className="px-3 py-1 text-sm cursor-pointer">
                       Ganti Video
-                    </Button>
+                    </HoverButton>
                     <Button
                       variant="outline"
                       onClick={() => {
@@ -209,6 +210,7 @@ export default function ScheduleCreatePage() {
                         setCaption("");
                         setHashtags("");
                       }}
+                      className="w-32 h-10 lg:h-12 border border-black cursor-pointer"
                     >
                       Hapus
                     </Button>
@@ -220,11 +222,11 @@ export default function ScheduleCreatePage() {
 
           {/* Kolom kanan: detail schedule (+ info video terpilih) */}
           <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
+            <CardHeader className="text-center">
+              <CardTitle className="text-lg flex items-center justify-center gap-2">
                 <CalendarDays className="h-5 w-5" /> Detail Jadwal
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-center">
                 Atur platform, caption/hashtag, tanggal & jam.
               </CardDescription>
             </CardHeader>
@@ -254,9 +256,9 @@ export default function ScheduleCreatePage() {
                     <button
                       key={p.value}
                       onClick={() => setPlatform(p.value)}
-                      className={`rounded-full border px-3 py-1 text-sm ${
+                      className={`rounded-full border px-3 py-1 text-sm cursor-pointer ${
                         platform === p.value
-                          ? "bg-black text-white"
+                          ? "btn-bg-purple text-black"
                           : "hover:bg-slate-50"
                       }`}
                     >
@@ -344,10 +346,10 @@ export default function ScheduleCreatePage() {
 
             {/* Tombol Simpan: hanya di bawah */}
             <CardFooter className="flex items-center justify-end gap-2">
-              <Button variant="secondary" onClick={() => window.history.back()}>
+              <Button variant="secondary" onClick={() => window.history.back()} className="w-32 h-10 lg:h-12 border border-black cursor-pointer">
                 Batal
               </Button>
-              <Button
+              <HoverButton
                 onClick={onSubmit}
                 disabled={
                   submitting ||
@@ -358,9 +360,10 @@ export default function ScheduleCreatePage() {
                   !time ||
                   (date && time && new Date(`${date}T${time}:00`).getTime() < Date.now())
                 }
+                className="w-32 cursor-pointer"
               >
                 {submitting ? "Menyimpan…" : "Simpan"}
-              </Button>
+              </HoverButton>
             </CardFooter>
           </Card>
         </div>
@@ -435,9 +438,9 @@ export default function ScheduleCreatePage() {
                         {fmtDate(v.createdAt)}
                       </div>
                       <div className="mt-3 flex items-center justify-between">
-                        <Button size="sm" onClick={() => onPickVideo(v)}>
+                        <HoverButton onClick={() => onPickVideo(v)} className="px-3 py-1 text-sm h-8 cursor-pointer">
                           Pilih
-                        </Button>
+                        </HoverButton>
                         {v._id === selectedVideo?._id && (
                           <Badge
                             variant="secondary"
