@@ -407,48 +407,8 @@ export default function AccountSettingsPage() {
               <Avatar />
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4" />
-                  {isEditingUsername ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={tempUsername}
-                        onChange={(e) => setTempUsername(e.target.value)}
-                        className="px-2 py-1 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        placeholder="Enter username"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleUsernameUpdate();
-                          if (e.key === 'Escape') setIsEditingUsername(false);
-                        }}
-                      />
-                      <Button
-                        size="sm"
-                        onClick={handleUsernameUpdate}
-                        disabled={updating}
-                      >
-                        {updating ? <Loader2 className="h-3 w-3 animate-spin" /> : "Save"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsEditingUsername(false)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  ) : (
-                    <span 
-                      className="font-medium cursor-pointer hover:text-purple-600 hover:underline"
-                      onClick={() => {
-                        setTempUsername(profile.name);
-                        setIsEditingUsername(true);
-                      }}
-                      title="Click to edit username"
-                    >
-                      {profile.name}
-                    </span>
-                  )}
+                  <User className="h-4 w-4" />{" "}
+                  <span className="font-medium">{profile.name}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-600">
                   <Mail className="h-4 w-4" /> {profile.email}

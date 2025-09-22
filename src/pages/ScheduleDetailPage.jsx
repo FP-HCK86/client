@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { CalendarDays, Clock, Video, Hash, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,11 +11,23 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import api from "../api/client";
 
 export default function ScheduleDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const { toast } = useToast();
   const [schedule, setSchedule] = useState(null);
   const [editing, setEditing] = useState(false);
   const [editPlatform, setEditPlatform] = useState("instagram");
@@ -26,7 +38,6 @@ export default function ScheduleDetailPage() {
   const [editCoverTime, setEditCoverTime] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -37,12 +48,17 @@ export default function ScheduleDetailPage() {
         setSchedule(data.schedule);
       } catch (err) {
         setError(err.response?.data?.error || "Failed to fetch schedule");
+        toast({
+          title: "Gagal Memuat Schedule",
+          description: err.response?.data?.error || "Failed to fetch schedule",
+          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        });
       } finally {
         setLoading(false);
       }
     };
     if (id) fetchSchedule();
-  }, [id]);
+  }, [id, toast]);
 
   if (loading)
     return (
@@ -100,17 +116,15 @@ export default function ScheduleDetailPage() {
       ).toISOString();
       setEditDate(localIso.slice(0, 10));
       setEditTime(localIso.slice(11, 16));
-    } catch (e) {
+    } catch {
       setEditDate("");
       setEditTime("");
     }
-    setMsg("");
     setEditing(true);
   };
 
   const saveEdits = async () => {
     setSubmitting(true);
-    setMsg("");
     try {
       const scheduled_at = toUtcIsoFromLocalWIB(editDate, editTime);
       const body = {
@@ -123,12 +137,46 @@ export default function ScheduleDetailPage() {
       const { data } = await api.patch(`/schedules/${id}`, body);
       setSchedule(data.schedule);
       setEditing(false);
-      setMsg(data?.message || "Schedule updated");
+      toast({
+        title: "Schedule Berhasil Diperbarui",
+        description: data?.message || "Schedule berhasil diperbarui",
+        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+      });
     } catch (e) {
-      setMsg(e?.response?.data?.error || "Gagal memperbarui schedule");
+      toast({
+        title: "Gagal Memperbarui Schedule",
+        description: e?.response?.data?.error || "Gagal memperbarui schedule",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleDeleteSchedule = async () => {
+    try {
+      setDeleting(true);
+      await api.delete(`/schedules/${id}`);
+      toast({
+        title: "Schedule Berhasil Dihapus",
+        description: "Schedule telah berhasil dihapus",
+        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+      });
+      
+      // Give user time to see the success toast before redirecting
+      setTimeout(() => {
+        window.location.href = "/schedules";
+      }, 2000); // 2 seconds delay
+      
+    } catch (e) {
+      toast({
+        title: "Gagal Menghapus Schedule",
+        description: e?.response?.data?.error || "Gagal menghapus schedule",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
+      setDeleting(false); // Only reset deleting state on error, not on success
+    }
+    // Note: We don't reset setDeleting(false) on success to keep the button disabled during redirect
   };
 
   const statusBadge =
@@ -179,41 +227,58 @@ export default function ScheduleDetailPage() {
                   <Button variant="outline" onClick={enterEditMode}>
                     Edit
                   </Button>
-                  <Button
-                    variant="ghost"
-                    onClick={async () => {
-                      if (!confirm("Hapus schedule ini?")) return;
-                      try {
-                        setDeleting(true);
-                        await api.delete(`/schedules/${id}`);
-                        window.location.href = "/schedules";
-                      } catch (e) {
-                        alert(e?.response?.data?.error || "Gagal menghapus");
-                      } finally {
-                        setDeleting(false);
-                      }
-                    }}
-                    disabled={deleting}
-                  >
-                    {deleting ? "Menghapus…" : "Delete"}
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        disabled={deleting}
+                      >
+                        {deleting ? "Menghapus…" : "Delete"}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus Schedule</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Apakah Anda yakin ingin menghapus schedule ini? Tindakan ini tidak dapat dibatalkan.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleDeleteSchedule}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Hapus
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               )
             ) : (
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  onClick={() =>
-                    alert("Tidak bisa diedit: status sudah " + schedule.status)
-                  }
+                  onClick={() => {
+                    toast({
+                      title: "Tidak Dapat Diedit",
+                      description: `Schedule tidak dapat diedit karena status sudah ${schedule.status}`,
+                      className: "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
+                    });
+                  }}
                 >
                   Edit
                 </Button>
                 <Button
                   variant="ghost"
-                  onClick={() =>
-                    alert("Tidak bisa dihapus: status sudah " + schedule.status)
-                  }
+                  onClick={() => {
+                    toast({
+                      title: "Tidak Dapat Dihapus",
+                      description: `Schedule tidak dapat dihapus karena status sudah ${schedule.status}`,
+                      className: "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
+                    });
+                  }}
                 >
                   Delete
                 </Button>

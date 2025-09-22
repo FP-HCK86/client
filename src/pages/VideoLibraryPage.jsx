@@ -4,12 +4,25 @@ import { Film, Clock, Trash2, Filter as FilterIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import api from "../api/client";
 
 export default function VideoLibraryPage() {
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState("");
+  const [deleting, setDeleting] = useState(null); // Track which video is being deleted
+  const { toast } = useToast();
 
   useEffect(() => {
     let mounted = true;
@@ -20,7 +33,12 @@ export default function VideoLibraryPage() {
         setVideos(Array.isArray(data?.items) ? data.items : []);
       } catch (e) {
         if (!mounted) return;
-        setMsg(e?.response?.data?.error || "Gagal memuat video.");
+        toast({
+          title: "Error",
+          description: e?.response?.data?.error || "Gagal memuat video.",
+          variant: "destructive",
+          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -28,7 +46,7 @@ export default function VideoLibraryPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [toast]);
 
   const fmtDate = (iso) =>
     iso
@@ -47,13 +65,30 @@ export default function VideoLibraryPage() {
     return `${m}:${sec}`;
   };
 
-  // (opsional) hapus video – minimal tanpa konfirmasi/validasi
-  async function onDelete(id) {
+  // Hapus video dengan konfirmasi yang proper
+  async function handleDeleteVideo(id) {
     try {
+      setDeleting(id);
       await api.delete(`/videos/${id}`);
       setVideos((prev) => prev.filter((v) => (v._id || v.id) !== id));
-    } catch (e) {
-      setMsg(e?.response?.data?.error || "Gagal menghapus video.");
+      toast({
+        title: "Video Berhasil Dihapus",
+        description: "Video telah berhasil dihapus dari library",
+        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+      });
+      
+      // Give user time to see the success toast
+      setTimeout(() => {
+        setDeleting(null);
+      }, 2000);
+      
+    } catch (error) {
+      toast({
+        title: "Gagal Menghapus Video",
+        description: error?.response?.data?.error || "Gagal menghapus video",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
+      setDeleting(null); // Reset immediately on error
     }
   }
 
@@ -77,7 +112,6 @@ export default function VideoLibraryPage() {
             )}
           </div>
         </div>
-        {msg && <div className="mt-2 text-sm text-red-600">{msg}</div>}
 
         {/* Filter Bar (visual saja) */}
         <Card className="mt-6">
@@ -188,14 +222,36 @@ export default function VideoLibraryPage() {
                         >
                           Buka Detail
                         </Button>
-                        <Button
-                          className="pointer-events-auto"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onDelete(id)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" /> Hapus
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              className="pointer-events-auto"
+                              size="sm"
+                              variant="ghost"
+                              disabled={deleting === id}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> 
+                              {deleting === id ? "Menghapus..." : "Hapus"}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Hapus Video</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Apakah Anda yakin ingin menghapus video ini? Tindakan ini tidak dapat dibatalkan.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteVideo(id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Hapus
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </div>

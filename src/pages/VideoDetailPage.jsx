@@ -14,14 +14,15 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import api from "../api/client";
 
 export default function VideoDetailPage() {
   const { id } = useParams(); // route: /videos/:id
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     title: "",
@@ -44,10 +45,20 @@ export default function VideoDetailPage() {
             hashtags: data.video.hashtags || "",
           });
         }
-        if (!data?.video) setMsg("Video tidak ditemukan.");
+        if (!data?.video) {
+          toast({
+            title: "Video Tidak Ditemukan",
+            description: "Video yang Anda cari tidak dapat ditemukan",
+            className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          });
+        }
       } catch (e) {
         if (!mounted) return;
-        setMsg(e?.response?.data?.error || "Gagal memuat detail video.");
+        toast({
+          title: "Gagal Memuat Video",
+          description: e?.response?.data?.error || "Gagal memuat detail video",
+          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -55,7 +66,7 @@ export default function VideoDetailPage() {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, toast]);
 
   const fmtDate = (iso) =>
     iso
@@ -73,7 +84,6 @@ export default function VideoDetailPage() {
       .padStart(2, "0");
     return `${m}:${sec}`;
   };
-  const fmtTime = fmtDuration;
 
   // Edit functions
   const handleEditClick = () => {
@@ -94,14 +104,20 @@ export default function VideoDetailPage() {
 
   const handleSaveEdit = async () => {
     try {
-      setMsg("");
       const { data } = await api.patch(`/videos/${id}`, editForm);
       setVideo(data.video);
       setIsEditing(false);
-      setMsg("Video berhasil diperbarui.");
-      setTimeout(() => setMsg(""), 3000);
+      toast({
+        title: "Video Berhasil Diperbarui",
+        description: "Video telah berhasil diperbarui",
+        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+      });
     } catch (e) {
-      setMsg(e?.response?.data?.error || "Gagal memperbarui video.");
+      toast({
+        title: "Gagal Memperbarui Video",
+        description: e?.response?.data?.error || "Gagal memperbarui video",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
     }
   };
 
@@ -110,7 +126,6 @@ export default function VideoDetailPage() {
   };
 
   // fallback data opsional bila backend belum sediakan insight
-  const transcriptSegments = video?.transcriptSegments || [];
   const captions = video?.ai_captions || []; // misal backend isi di field ini
   const hashtagsArr = Array.isArray(video?.ai_hashtags)
     ? video.ai_hashtags
@@ -180,7 +195,6 @@ export default function VideoDetailPage() {
             )}
           </div>
         </div>
-        {msg && <div className="mb-4 text-sm text-red-600">{msg}</div>}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Kolom video */}
