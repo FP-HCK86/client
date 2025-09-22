@@ -224,30 +224,31 @@ const LoginPage = memo(() => {
   return (
     <div className="min-h-screen bg-white">
       {/* Top bar (Back / Sign up) */}
-      <div className="mx-auto max-w-6xl px-8 pt-6 flex items-center justify-between">
-        <Link
+      <div className="mx-auto px-8 pt-6 flex items-center justify-between">
+        {/* <Link
           to="/"
           className="inline-flex items-center text-sm text-slate-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded cursor-pointer"
           aria-label="Back to home"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to home
-        </Link>
+        </Link> */}
+          
       </div>
 
       {/* Main content */}
-      <div className="mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center justify-center px-8 py-6">
-        <div className="flex w-full items-center gap-8 lg:gap-16">
-          {/* LEFT: Hero content (hide on small screens) */}
-          <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden min-h-[400px]">
-            <div
-              aria-hidden
-              className="absolute inset-0 w-full h-full"
-              style={{
+      <div className="mx-auto flex items-center justify-center px-8 py-6 min-h-screen" style={{
                 background:
                   "radial-gradient(80% 80% at 30% 50%, rgba(147,51,234,0.8) 0%, rgba(196,181,253,0.6) 30%, rgba(255,255,255,0.9) 70%, rgba(255,255,255,1) 100%)",
                 zIndex: 0,
-              }}
+              }}>
+        <div className="flex w-full items-center gap-8 lg:gap-16">
+          {/* LEFT: Hero content (hide on small screens) */}
+          <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden">
+            <div
+              aria-hidden
+              className="absolute inset-0 w-full h-full"
+            
             />
             <div className="p-8 lg:p-12 relative z-10">
               <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">

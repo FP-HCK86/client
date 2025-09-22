@@ -196,7 +196,7 @@ export const SidebarLink = ({
     <a
       href={link.href}
       className={cn(
-        "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors",
+        "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:cursor-pointer transition-colors",
         open ? "justify-start" : "justify-center",
         isActive && "bg-neutral-200 dark:bg-neutral-700",
         className
@@ -258,7 +258,7 @@ export const SidebarCategory = ({
       <button
         onClick={handleClick}
         className={cn(
-          "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors",
+          "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:cursor-pointer transition-colors",
           open ? "justify-start" : "justify-center",
           isActive && "bg-neutral-200 dark:bg-neutral-700",
           className

@@ -1,10 +1,21 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import HoverButton from "@/components/ui/HoverButton";
 import { StickyScroll } from "../components/ui/sticky-scroll-reveal";
 import { WobbleCard } from "../components/ui/wobble-card";
 import { Separator } from "@/components/ui/separator";
 import { Facebook, Twitter, Instagram, Github } from "lucide-react";
+import creativeDesign from "../assets/creative-design.svg";
+import education from "../assets/education.svg";
+import empowerment from "../assets/empowerment.svg";
+import gitaris from "../assets/gitaris.svg";
+import llifestyle1 from "../assets/llifestyle-1.svg";
+import singing from "../assets/singing.svg";
+import travel from "../assets/travel.svg";
+import workEmployee from "../assets/work-employee.svg";
+import photograpy from "../assets/photograpy.svg";
+import selfie from "../assets/selfie.svg";
 
 const content = [
   {
@@ -76,11 +87,11 @@ const content = [
 export function Features() {
   return (
     <>
-      <section className="mb-20">
+      <section className="mb-20 bg-planoria pt-1">
         <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-bold text-center mt-16 mb-8 text-slate-900">
           Our Features
         </h1>
-        <div className="w-full py-4">
+        <div className="w-full">
           <StickyScroll content={content} />
         </div>
       </section>
@@ -90,11 +101,11 @@ export function Features() {
 
 export function HowItWorks() {
   return (
-    <section className="mb-20">
+    <section className="mb-20 py-10 bg-planoria">
       <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-bold text-center mt-16 mb-8 text-slate-900">
         How it Works
       </h1>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full mt-12">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full mt-12 mb-20">
         <WobbleCard
           containerClassName="col-span-1 lg:col-span-2 h-full bg-pink-800 min-h-[500px] lg:min-h-[300px]"
           className=""
@@ -163,7 +174,7 @@ export function FooterSection() {
         </h2>
 
         <div className="mt-6 flex justify-center">
-          <GlowButton>Get Planoria</GlowButton>
+          <HoverButton href="/register">Get Planoria</HoverButton>
         </div>
       </div>
 
@@ -183,16 +194,32 @@ export function FooterSection() {
 
           {/* Social */}
           <div className="flex items-center gap-4 text-slate-500">
-            <a href="#" aria-label="Twitter" className="hover:text-slate-900 cursor-pointer">
+            <a
+              href="#"
+              aria-label="Twitter"
+              className="hover:text-slate-900 cursor-pointer"
+            >
               <Twitter size={18} />
             </a>
-            <a href="#" aria-label="Facebook" className="hover:text-slate-900 cursor-pointer">
+            <a
+              href="#"
+              aria-label="Facebook"
+              className="hover:text-slate-900 cursor-pointer"
+            >
               <Facebook size={18} />
             </a>
-            <a href="#" aria-label="Instagram" className="hover:text-slate-900 cursor-pointer">
+            <a
+              href="#"
+              aria-label="Instagram"
+              className="hover:text-slate-900 cursor-pointer"
+            >
               <Instagram size={18} />
             </a>
-            <a href="#" aria-label="Github" className="hover:text-slate-900 cursor-pointer">
+            <a
+              href="#"
+              aria-label="Github"
+              className="hover:text-slate-900 cursor-pointer"
+            >
               <Github size={18} />
             </a>
           </div>
@@ -217,32 +244,52 @@ export function FooterSection() {
   );
 }
 
-function GlowButton({ children }) {
-  return (
-    <div className="relative">
-      <div
-        className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-cyan-400 via-pink-400 to-amber-300 blur opacity-60"
-        aria-hidden
-      />
-      <Button
-        size="lg"
-        className="relative rounded-full bg-slate-900 text-white hover:bg-black cursor-pointer"
-      >
-        {children}
-      </Button>
-    </div>
-  );
-}
+// GlowButton removed — replaced by HoverButton
 
 export default function HeroSection() {
   const portraits = [
-    "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=600&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=600&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?q=80&w=600&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1552053831-71594a27632d?q=80&w=600&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1527980965255-d3b416303d12?q=80&w=600&auto=format&fit=crop",
-    "https://images.unsplash.com/photo-1544005316-04ce1f1a1f6c?q=80&w=600&auto=format&fit=crop",
+    creativeDesign,
+    education,
+    empowerment,
+    gitaris,
+    llifestyle1,
+    singing,
+    travel,
+    workEmployee,
+    photograpy,
+    selfie,
   ];
+
+  // Fisher-Yates shuffle helper
+  const shuffleArray = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  // Precompute randomized sets once per mount
+  const leftPortraits = useMemo(() => shuffleArray(portraits).slice(0, 5), []);
+  // Ensure rightPortraits are different from leftPortraits: shuffle and exclude left picks
+  const rightPortraits = useMemo(() => {
+    const remaining = portraits.filter((p) => !leftPortraits.includes(p));
+    const shuffled = shuffleArray(remaining);
+    // If not enough remaining items, fall back to shuffled full set (ensures 5 items)
+    const source =
+      shuffled.length >= 5
+        ? shuffled
+        : shuffleArray(portraits)
+            .filter((p) => !leftPortraits.includes(p))
+            .concat(shuffleArray(portraits));
+    return source.slice(0, 5);
+  }, [leftPortraits]);
+  const horizontalBase = useMemo(() => shuffleArray(portraits).slice(0, 5), []);
+  const horizontalPortraits = useMemo(
+    () => horizontalBase.concat(horizontalBase),
+    [horizontalBase]
+  );
 
   const Navbar = () => {
     return (
@@ -252,10 +299,10 @@ export default function HeroSection() {
             <img
               src="/src/assets/planoria-logo.png"
               alt="Planoria Logo"
-              className="h-15 w-auto"
+              className="h-13 w-auto"
             />
           </div>
-          <Button onClick={() => window.location.href = '/login'} className="cursor-pointer">Get Started</Button>
+          <HoverButton href="/login">Get Started</HoverButton>
         </div>
       </nav>
     );
@@ -264,7 +311,7 @@ export default function HeroSection() {
   return (
     <>
       <Navbar />
-      <section className="relative isolate overflow-hidden h-screen flex items-center pt-16 pb-4 sm:pb-6 lg:pb-8">
+      <section className="relative isolate overflow-hidden h-screen flex items-center pt-16 pb-4 sm:pb-6 lg:pb-8 bg-planoria">
         {/* background gradient */}
         <div
           aria-hidden
@@ -278,19 +325,13 @@ export default function HeroSection() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full h-full grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 xl:gap-16 items-center lg:items-center">
           {/* Left column */}
           <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
-
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
               Turn Ideas Into Impactful Stories with Planoria
               <span className="align-super">^</span>
             </h1>
 
             <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <a
-                href="/login"
-                className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 sm:px-6 py-2.5 sm:py-3 text-white text-sm font-semibold shadow hover:bg-black transition-colors cursor-pointer"
-              >
-                Get Started
-              </a>
+              <HoverButton href="/login">Get Started</HoverButton>
             </div>
           </div>
 
@@ -301,7 +342,7 @@ export default function HeroSection() {
               {/* Left column moves upward */}
               <div className="overflow-hidden flex-1">
                 <motion.div
-                  animate={{ y: [0, -300] }}
+                  animate={{ y: [0, -600] }}
                   transition={{
                     duration: 10,
                     repeat: Infinity,
@@ -309,17 +350,15 @@ export default function HeroSection() {
                   }}
                   className="flex flex-col gap-4"
                 >
-                  {portraits.map((src, i) => (
+                  {leftPortraits.concat(leftPortraits).map((src, i) => (
                     <div
                       key={i}
-                      className={`w-36 h-48 overflow-hidden ${
-                        i % 2 === 0 ? "rounded-[20px]" : "rounded-full"
-                      }`}
+                      className={`w-48 h-64 overflow-hidden flex items-center justify-center`}
                     >
                       <img
                         src={src}
                         alt="creator portrait"
-                        className="h-full w-full object-cover grayscale"
+                        className="max-h-full max-w-full object-contain"
                       />
                     </div>
                   ))}
@@ -329,7 +368,7 @@ export default function HeroSection() {
               {/* Right column moves downward */}
               <div className="overflow-hidden flex-1">
                 <motion.div
-                  animate={{ y: [0, 300] }}
+                  animate={{ y: [0, -300] }}
                   transition={{
                     duration: 10,
                     repeat: Infinity,
@@ -337,17 +376,15 @@ export default function HeroSection() {
                   }}
                   className="flex flex-col gap-4"
                 >
-                  {portraits.map((src, i) => (
+                  {rightPortraits.concat(rightPortraits).map((src, i) => (
                     <div
                       key={i}
-                      className={`w-36 h-48 overflow-hidden ${
-                        i % 2 === 0 ? "rounded-[20px]" : "rounded-full"
-                      }`}
+                      className={`w-48 h-64 overflow-hidden flex items-center justify-center`}
                     >
                       <img
                         src={src}
                         alt="creator portrait"
-                        className="h-full w-full object-cover grayscale"
+                        className="max-h-full max-w-full object-contain"
                       />
                     </div>
                   ))}
@@ -356,29 +393,25 @@ export default function HeroSection() {
             </div>
 
             {/* Small and Medium screens: horizontal marquee */}
-            <div className="lg:hidden overflow-hidden w-full h-40 sm:h-44 md:h-48">
+            <div className="lg:hidden overflow-hidden w-full h-[30rem] sm:h-[34rem] md:h-[38rem]">
               <motion.div
                 animate={{ x: [0, -500] }}
                 transition={{
-                  duration: 20,
+                  duration: 10,
                   repeat: Infinity,
                   ease: "linear",
                 }}
-                className="flex flex-row gap-3 sm:gap-4"
+                className="flex flex-row gap-6 sm:gap-8"
               >
-                {portraits.concat(portraits).map((src, i) => (
+                {horizontalPortraits.map((src, i) => (
                   <div
                     key={i}
-                    className={`w-28 h-36 sm:w-32 sm:h-40 md:w-36 md:h-44 overflow-hidden flex-shrink-0 ${
-                      i % 2 === 0
-                        ? "rounded-[16px] sm:rounded-[20px]"
-                        : "rounded-full"
-                    }`}
+                    className={`w-80 h-[34rem] sm:w-[22rem] sm:h-[38rem] md:w-[26rem] md:h-[42rem] overflow-hidden flex-shrink-0 flex items-center justify-center`}
                   >
                     <img
                       src={src}
                       alt="creator portrait"
-                      className="h-full w-full object-cover grayscale"
+                      className="max-h-full max-w-full object-contain"
                     />
                   </div>
                 ))}
