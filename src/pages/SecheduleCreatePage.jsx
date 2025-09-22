@@ -37,6 +37,57 @@ export default function ScheduleCreatePage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [lateInfo, setLateInfo] = useState(null); // store late post/job id
+  const [upgradeRedirect, setUpgradeRedirect] = useState(null);
+  const [upgradeProcessing, setUpgradeProcessing] = useState(false);
+
+  // Helper: start Midtrans Snap in-place (called by Upgrade button)
+  const startInlineUpgrade = async () => {
+    try {
+      setUpgradeProcessing(true);
+      // ensure snap script is loaded
+      if (!window.snap) {
+        const script = document.querySelector('script[src*="snap.js"]') || document.createElement('script');
+        if (!script.parentNode) {
+          script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
+          script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
+          script.async = true;
+          document.head.appendChild(script);
+        }
+        // wait briefly for script
+        const start = Date.now();
+        while (!window.snap && Date.now() - start < 4000) {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, 150));
+        }
+        if (!window.snap) throw new Error('Gagal memuat Midtrans');
+      }
+
+      const { data } = await api.post('/payment/create');
+      if (!data || !data.token) throw new Error('Token pembayaran tidak tersedia');
+
+      window.snap.pay(data.token, {
+        onSuccess: async (result) => {
+          toast({ title: 'Pembayaran Berhasil', description: 'Akun Anda telah diupgrade ke Premium' });
+          // trigger backend status check
+          try { await api.get(`/payment/status?order_id=${encodeURIComponent(data.order_id)}`); } catch (e) { }
+          // redirect back to create schedule
+          setTimeout(() => { window.location.href = '/schedules/create'; }, 900);
+        },
+        onPending: (result) => {
+          toast({ title: 'Pembayaran Pending', description: 'Pembayaran sedang diproses.' });
+        },
+        onError: (result) => {
+          toast({ title: 'Pembayaran Gagal', description: 'Terjadi kesalahan pembayaran.' });
+        }
+      });
+    } catch (err) {
+      console.error('Inline upgrade error', err);
+      toast({ title: 'Error', description: err?.message || 'Terjadi kesalahan saat memulai pembayaran.' });
+    } finally {
+      setUpgradeProcessing(false);
+      setUpgradeRedirect(null);
+    }
+  };
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -122,9 +173,12 @@ export default function ScheduleCreatePage() {
       }
       // window.location.href = `/schedule/${data?.schedule?._id}`;
     } catch (e) {
+      const errMsg = e?.response?.data?.error || "Gagal membuat schedule";
+      const redirectTo = e?.response?.data?.redirectTo || null;
+      if (redirectTo) setUpgradeRedirect(redirectTo);
       toast({
         title: "Error",
-        description: e?.response?.data?.error || "Gagal membuat schedule",
+        description: errMsg,
         variant: "destructive",
         className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
@@ -367,6 +421,33 @@ export default function ScheduleCreatePage() {
         {lateInfo && (
           <div className="mt-6 text-xs text-slate-600">
             Late job/post id: <span className="font-mono">{lateInfo.postId}</span> ({lateInfo.mode})
+          </div>
+        )}
+        {upgradeRedirect && (
+          <div className="fixed right-6 top-6 z-50">
+            <div className="rounded-lg bg-gradient-to-r from-red-500 via-red-400 to-red-300 p-4 text-white shadow-lg">
+              <div className="flex items-start gap-4">
+                <div className="flex-1">
+                  <div className="font-semibold">Limit reached</div>
+                  <div className="text-sm">Anda telah mencapai batas 3 schedule. Upgrade untuk akses unlimited.</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => { e.preventDefault(); startInlineUpgrade(); }}
+                    disabled={upgradeProcessing}
+                    className="rounded-md bg-white px-3 py-1 text-sm font-medium text-red-600"
+                  >
+                    {upgradeProcessing ? 'Memproses...' : 'Upgrade'}
+                  </button>
+                  <button
+                    onClick={() => setUpgradeRedirect(null)}
+                    className="rounded-md bg-white/10 px-2 py-1 text-sm text-white"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
