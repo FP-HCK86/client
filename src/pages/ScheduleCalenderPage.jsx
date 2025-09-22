@@ -7,6 +7,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import HoverButton from "@/components/ui/HoverButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -87,7 +88,7 @@ export default function ScheduleCalendarPage({
   const createSchedule = () => {
     if (onCreateSchedule) return onCreateSchedule();
     if (typeof window !== "undefined")
-      window.location.href = "/schedule/create";
+      window.location.href = "/schedules/create";
   };
 
   return (
@@ -104,13 +105,13 @@ export default function ScheduleCalendarPage({
               Lihat semua jadwal posting dalam tampilan bulan/minggu/hari.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button
+            <div className="flex gap-2">
+            <HoverButton
               onClick={createSchedule}
-              className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+              className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
             >
               <Plus className="mr-2 h-4 w-4" /> Create Schedule
-            </Button>
+            </HoverButton>
           </div>
         </div>
 
@@ -125,7 +126,7 @@ export default function ScheduleCalendarPage({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+                  className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation cursor-pointer"
                   onClick={() => gotoPrev(view)}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -136,14 +137,14 @@ export default function ScheduleCalendarPage({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+                  className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation cursor-pointer"
                   onClick={() => gotoNext(view)}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="secondary"
-                  className="ml-2 h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+                  className="ml-2 h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
                   onClick={gotoToday}
                 >
                   Today
@@ -153,21 +154,21 @@ export default function ScheduleCalendarPage({
                 <Button
                   variant={view === "month" ? "default" : "outline"}
                   onClick={() => setView("month")}
-                  className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+                  className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation btn-default cursor-pointer"
                 >
                   Month
                 </Button>
                 <Button
                   variant={view === "week" ? "default" : "outline"}
                   onClick={() => setView("week")}
-                  className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+                  className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation btn-default cursor-pointer"
                 >
                   Week
                 </Button>
                 <Button
                   variant={view === "day" ? "default" : "outline"}
                   onClick={() => setView("day")}
-                  className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+                  className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation btn-default cursor-pointer"
                 >
                   Day
                 </Button>
@@ -214,8 +215,8 @@ export default function ScheduleCalendarPage({
                       <div className="mb-1 flex items-center justify-between">
                         <button
                           className={`text-sm sm:text-xs rounded-lg px-2 py-1 sm:px-1 sm:py-0.5 ${
-                            isToday ? "bg-black text-white" : "text-slate-700"
-                          } touch-manipulation`}
+                            isToday ? "btn-bg-orange text-black" : "text-slate-700"
+                          } touch-manipulation cursor-pointer`}
                           onClick={() => {
                             setView("day");
                             setCurrentDate(date);
@@ -231,7 +232,7 @@ export default function ScheduleCalendarPage({
                           <div
                             key={ev.id}
                             onClick={() => openEvent(ev.id)}
-                            className="cursor-pointer truncate rounded-md bg-black px-2 py-1.5 sm:py-1 text-xs sm:text-[11px] text-white hover:opacity-90 touch-manipulation"
+                            className="cursor-pointer truncate rounded-md btn-bg-orange px-2 py-1.5 sm:py-1 text-xs sm:text-[11px] text-black hover:opacity-90 touch-manipulation"
                             title={`${ev.title} • ${formatTime(
                               ev.start
                             )}-${formatTime(ev.end)}`}
@@ -244,7 +245,7 @@ export default function ScheduleCalendarPage({
                         ))}
                         {dayEvents.length > 3 && (
                           <button
-                            className="text-xs sm:text-[11px] text-slate-600 hover:underline touch-manipulation"
+                            className="text-xs sm:text-[11px] text-slate-600 hover:underline touch-manipulation cursor-pointer"
                             onClick={() => {
                               setView("day");
                               setCurrentDate(date);
@@ -294,7 +295,7 @@ export default function ScheduleCalendarPage({
                       {list.map((ev) => (
                         <button
                           key={ev.id}
-                          className="flex flex-col items-start rounded-lg border p-3 sm:p-2 text-left hover:bg-slate-50 touch-manipulation"
+                          className="flex flex-col items-start rounded-lg border p-3 sm:p-2 text-left hover:bg-slate-50 touch-manipulation cursor-pointer"
                           onClick={() => openEvent(ev.id)}
                         >
                           <div className="text-base sm:text-sm font-medium leading-5 line-clamp-2">
@@ -347,11 +348,11 @@ export default function ScheduleCalendarPage({
                       })}
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                    <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+                      className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation cursor-pointer"
                       onClick={() => {
                         const d = addDays(selectedDate, -1);
                         setSelectedDate(d);
@@ -363,7 +364,7 @@ export default function ScheduleCalendarPage({
                     <Button
                       variant="outline"
                       size="icon"
-                      className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation"
+                      className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation cursor-pointer"
                       onClick={() => {
                         const d = addDays(selectedDate, 1);
                         setSelectedDate(d);
@@ -387,7 +388,7 @@ export default function ScheduleCalendarPage({
                     return list.map((ev) => (
                       <button
                         key={ev.id}
-                        className="flex items-center justify-between rounded-xl border p-3 text-left hover:bg-slate-50"
+                        className="flex items-center justify-between rounded-xl border p-3 text-left hover:bg-slate-50 cursor-pointer"
                         onClick={() => openEvent(ev.id)}
                       >
                         <div>
@@ -432,7 +433,7 @@ export default function ScheduleCalendarPage({
                 <div className="flex flex-col gap-2">
                   <Button
                     onClick={createSchedule}
-                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
                   >
                     <Plus className="mr-2 h-4 w-4" /> Create Schedule
                   </Button>
@@ -441,7 +442,7 @@ export default function ScheduleCalendarPage({
                     onClick={() => {
                       setView("week");
                     }}
-                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
                   >
                     View This Week
                   </Button>
@@ -450,7 +451,7 @@ export default function ScheduleCalendarPage({
                     onClick={() => {
                       setView("month");
                     }}
-                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation"
+                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
                   >
                     View This Month
                   </Button>

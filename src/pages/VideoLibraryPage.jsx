@@ -147,8 +147,8 @@ export default function VideoLibraryPage() {
           </CardContent>
         </Card>
 
-        {/* Grid Video */}
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  {/* Grid Video */}
+  <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
           {loading ? (
             <div className="text-sm text-slate-600">Memuat daftar video…</div>
           ) : shown.length === 0 ? (
@@ -163,16 +163,13 @@ export default function VideoLibraryPage() {
               const secureUrl = v.secure_url || v.url || "";
 
               return (
-                <div
-                  key={id}
-                  className="group relative overflow-hidden rounded-2xl ring-1 ring-slate-200 bg-black/5"
-                >
-                  <div className="relative aspect-[9/16] w-full">
+                <div key={id} className="group relative">
+                  <div className="relative aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-xl bg-white cursor-pointer">
                     {/* Jika ingin preview langsung video Cloudinary: */}
                     {secureUrl ? (
                       <video
                         src={secureUrl}
-                        className="absolute inset-0 h-full w-full object-cover"
+                        className="absolute inset-0 h-full w-full object-cover cursor-pointer"
                         muted
                       />
                     ) : (
@@ -183,75 +180,69 @@ export default function VideoLibraryPage() {
                     <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs text-white">
                       <Clock className="h-3.5 w-3.5" /> {fmtDuration(duration)}
                     </div>
-                  </div>
-
-                  {/* Hover Overlay */}
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 opacity-0 group-hover:opacity-100 transition">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                    <div className="relative z-10 w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
-                      <div className="flex items-start justify-between gap-3">
+                    {/* Hover Overlay - moved inside the preview wrapper so it matches size */}
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 opacity-0 group-hover:opacity-100 transition">
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+                      <div className="relative z-10 w-full h-full rounded-xl p-4 flex flex-col justify-between">
                         <div>
-                          <p className="text-sm font-semibold leading-5 line-clamp-2">
+                          <p className="text-sm font-semibold leading-5 line-clamp-2 text-white">
                             {v.title || "Tanpa judul"}
                           </p>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/90">
                             <Badge variant="secondary">
                               {fmtDate(createdAt)}
                             </Badge>
                           </div>
                           {caption && (
-                            <p className="mt-2 text-xs text-slate-700 line-clamp-2">
+                            <p className="mt-2 text-xs text-white/90 line-clamp-2">
                               {caption}
                             </p>
                           )}
                           {hashtags && (
-                            <p className="mt-1 text-[11px] text-slate-500 truncate">
+                            <p className="mt-1 text-[11px] text-white/80 truncate">
                               {hashtags}
                             </p>
                           )}
                         </div>
-                      </div>
 
-                      <div className="mt-4 flex items-center gap-2">
-                        <Button
-                          className="pointer-events-auto"
-                          size="sm"
-                          onClick={() =>
-                            (window.location.href = `/videos/${id}`)
-                          }
-                        >
-                          Buka Detail
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              className="pointer-events-auto"
-                              size="sm"
-                              variant="ghost"
-                              disabled={deleting === id}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> 
-                              {deleting === id ? "Menghapus..." : "Hapus"}
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Hapus Video</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Apakah Anda yakin ingin menghapus video ini? Tindakan ini tidak dapat dibatalkan.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Batal</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteVideo(id)}
-                                className="bg-red-600 hover:bg-red-700"
+                        <div className="mt-4 flex items-center gap-2">
+                          <Button
+                            className="btn-default pointer-events-auto text-white cursor-pointer border border-black"
+                            size="sm"
+                            onClick={() => (window.location.href = `/videos/${id}`)}
+                          >
+                            Buka Detail
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                className="pointer-events-auto border border-black bg-white text-black cursor-pointer px-3 py-1 text-sm h-8 hover:bg-white hover:text-black hover:border-black hover:opacity-100 hover:shadow-none transition-none"
+                                size="sm"
+                                disabled={deleting === id}
                               >
-                                Hapus
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                {deleting === id ? "Menghapus..." : "Hapus"}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Hapus Video</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Apakah Anda yakin ingin menghapus video ini? Tindakan ini tidak dapat dibatalkan.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>  
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteVideo(id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Hapus
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   </div>

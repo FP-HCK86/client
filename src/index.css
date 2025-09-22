@@ -46,6 +46,16 @@
   --background: oklch(1 0 0);
   /* Planoria brand background color */
   --bg-planoria: #f4f4f0;
+  /* HoverButton color tokens (pastel variants) */
+  --hover-btn-purple: #e9d5ff; /* main button background (ungu pastel) */
+  --hover-btn-green: #dff7e6; /* top gradient layer (hijau pastel) */
+  --hover-btn-orange: #ffd9b3; /* bottom layer / hover offset (oren pastel) */
+  /* Non-hover aliases (same colors, for general use) */
+  --btn-purple: var(--hover-btn-purple);
+  --btn-green: var(--hover-btn-green);
+  --btn-orange: var(--hover-btn-orange);
+  /* Button border token */
+  --btn-border: #000000;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -122,5 +132,31 @@
   /* Utility class to apply Planoria background color */
   .bg-planoria {
     background-color: var(--bg-planoria);
+  }
+  /* Helper utility classes for button backgrounds with black border */
+  .btn-bg-purple {
+    background-color: var(--btn-purple);
+    border: 1px solid var(--btn-border);
+  }
+  .btn-bg-green {
+    background-color: var(--btn-green);
+    border: 1px solid var(--btn-border);
+  }
+  .btn-bg-orange {
+    background-color: var(--btn-orange);
+    border: 1px solid var(--btn-border);
+  }
+  /* Default single button class: purple background + black border */
+  .btn-default {
+    background-color: var(--btn-purple) !important;
+    border: 1px solid var(--btn-border) !important;
+    color: var(--color-foreground, #111827) !important;
+  }
+  .btn-default {
+    transition: background-color 150ms ease, transform 150ms ease;
+  }
+  .btn-default:hover {
+    background-color: var(--btn-green) !important;
+    transform: translateY(-1px);
   }
 }
