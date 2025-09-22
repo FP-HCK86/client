@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Film, Clock, Copy, Calendar, Edit, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import HoverButton from "@/components/ui/HoverButton";
 import {
   Card,
   CardHeader,
@@ -49,7 +50,8 @@ export default function VideoDetailPage() {
           toast({
             title: "Video Tidak Ditemukan",
             description: "Video yang Anda cari tidak dapat ditemukan",
-            className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+            className:
+              "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
           });
         }
       } catch (e) {
@@ -57,7 +59,8 @@ export default function VideoDetailPage() {
         toast({
           title: "Gagal Memuat Video",
           description: e?.response?.data?.error || "Gagal memuat detail video",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -110,13 +113,15 @@ export default function VideoDetailPage() {
       toast({
         title: "Video Berhasil Diperbarui",
         description: "Video telah berhasil diperbarui",
-        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        className:
+          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
       });
     } catch (e) {
       toast({
         title: "Gagal Memperbarui Video",
         description: e?.response?.data?.error || "Gagal memperbarui video",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
     }
   };
@@ -173,10 +178,14 @@ export default function VideoDetailPage() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-4">
             {isEditing ? (
               <>
-                <Button onClick={handleSaveEdit} variant="default">
+                <Button
+                  onClick={handleSaveEdit}
+                  variant="default"
+                  className="btn-default inline-flex items-center gap-2 px-3 py-1 h-8"
+                >
                   <Save className="mr-2 h-4 w-4" /> Simpan
                 </Button>
                 <Button onClick={handleCancelEdit} variant="outline">
@@ -185,12 +194,19 @@ export default function VideoDetailPage() {
               </>
             ) : (
               <>
-                <Button onClick={handleEditClick} variant="outline">
+                <Button
+                  onClick={handleEditClick}
+                  variant="outline"
+                  className="inline-flex items-center gap-2 px-3 py-1 h-12 border border-black"
+                >
                   <Edit className="mr-2 h-4 w-4" /> Edit
                 </Button>
-                <Button onClick={() => navigate("/schedule/create")}>
+                <HoverButton
+                  onClick={() => navigate("/schedule/create")}
+                  className="inline-flex items-center gap-2 px-3 py-1 h-8"
+                >
                   <Calendar className="mr-2 h-4 w-4" /> Schedule Post
-                </Button>
+                </HoverButton>
               </>
             )}
           </div>
@@ -199,17 +215,17 @@ export default function VideoDetailPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Kolom video */}
           <Card className="lg:col-span-2 overflow-hidden">
-            <div className="relative aspect-square max-w-sm mx-auto w-full bg-black/5">
+            <div className="relative w-full max-w-[360px] mx-auto aspect-[9/16] rounded-xl overflow-hidden border bg-white">
               {secureUrl ? (
                 <video
                   src={secureUrl}
                   controls
-                  className="h-full w-full object-contain bg-black"
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 bg-black/80">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 bg-black/5">
                   <Film className="h-10 w-10" />
-                  <span className="text-sm text-white/80">
+                  <span className="text-sm text-slate-600">
                     (Preview video akan tampil di sini)
                   </span>
                 </div>

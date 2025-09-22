@@ -41,14 +41,17 @@ const LoginPage = memo(() => {
   }, [isAuthenticated, navigate]);
 
   // Handle form input changes
-  const handleInputChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear specific field error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
-    }
-  }, [errors]);
+  const handleInputChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      // Clear specific field error when user starts typing
+      if (errors[name]) {
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+    },
+    [errors]
+  );
 
   // Validate form
   const validateForm = useCallback(() => {
@@ -68,56 +71,63 @@ const LoginPage = memo(() => {
   }, [formData]);
 
   // Handle form submission
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    setErrors({});
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setErrors({});
 
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+      const validationErrors = validateForm();
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors);
+        return;
+      }
 
-    setLoading(true);
-    toast({
-      title: "Signing In...",
-      description: "Please wait while we sign you in",
-    });
+      setLoading(true);
+      toast({
+        title: "Signing In...",
+        description: "Please wait while we sign you in",
+      });
 
-    try {
-      const result = await login(formData.email, formData.password);
-      if (result.success) {
-        toast({
-          title: "Success!",
-          description: "Signed in successfully",
-          variant: "purple",
-          className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
-        });
-        navigate("/dashboard", { replace: true });
-      } else {
-        const msg = result.error || "Login failed. Please check your credentials.";
+      try {
+        const result = await login(formData.email, formData.password);
+        if (result.success) {
+          toast({
+            title: "Success!",
+            description: "Signed in successfully",
+            variant: "purple",
+            className:
+              "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+          });
+          navigate("/dashboard", { replace: true });
+        } else {
+          const msg =
+            result.error || "Login failed. Please check your credentials.";
+          setErrors({ general: msg });
+          toast({
+            title: "Login Failed",
+            description: msg,
+            variant: "destructive",
+            className:
+              "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          });
+        }
+      } catch (error) {
+        console.error("Login error:", error);
+        const msg = "An error occurred during login. Please try again.";
         setErrors({ general: msg });
         toast({
-          title: "Login Failed",
+          title: "Login Error",
           description: msg,
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      const msg = "An error occurred during login. Please try again.";
-      setErrors({ general: msg });
-      toast({
-        title: "Login Error",
-        description: msg,
-        variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [formData, login, navigate, toast, validateForm]);
+    },
+    [formData, login, navigate, toast, validateForm]
+  );
 
   const handleCredentialResponse = useCallback(
     async (response) => {
@@ -131,11 +141,12 @@ const LoginPage = memo(() => {
       try {
         const result = await googleLogin(response.credential);
         if (result.success) {
-          toast({ 
-            title: "Success", 
+          toast({
+            title: "Success",
             description: "Login successful",
             variant: "purple",
-            className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+            className:
+              "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
           });
           navigate("/dashboard", { replace: true });
         } else {
@@ -145,7 +156,8 @@ const LoginPage = memo(() => {
             title: "Authentication Failed",
             description: msg,
             variant: "destructive",
-            className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+            className:
+              "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
           });
         }
       } catch (e) {
@@ -156,7 +168,8 @@ const LoginPage = memo(() => {
           title: "Authentication Error",
           description: msg,
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       } finally {
         setGoogleLoading(false);
@@ -190,7 +203,8 @@ const LoginPage = memo(() => {
           title: "Init Error",
           description: "Failed to initialize Google Sign-In",
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       }
     };
@@ -213,7 +227,8 @@ const LoginPage = memo(() => {
           title: "Script Error",
           description: "Failed to load Google Sign-In script",
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       document.head.appendChild(script);
     } else {
@@ -234,23 +249,21 @@ const LoginPage = memo(() => {
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to home
         </Link> */}
-          
       </div>
 
       {/* Main content */}
-      <div className="mx-auto flex items-center justify-center px-8 py-6 min-h-screen" style={{
-                background:
-                  "radial-gradient(80% 80% at 30% 50%, rgba(147,51,234,0.8) 0%, rgba(196,181,253,0.6) 30%, rgba(255,255,255,0.9) 70%, rgba(255,255,255,1) 100%)",
-                zIndex: 0,
-              }}>
+      <div
+        className="mx-auto flex items-center justify-center px-8 py-6 min-h-screen"
+        style={{
+          background:
+            "radial-gradient(80% 80% at 30% 50%, rgba(147,51,234,0.8) 0%, rgba(196,181,253,0.6) 30%, rgba(255,255,255,0.9) 70%, rgba(255,255,255,1) 100%)",
+          zIndex: 0,
+        }}
+      >
         <div className="flex w-full items-center gap-8 lg:gap-16">
           {/* LEFT: Hero content (hide on small screens) */}
           <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden">
-            <div
-              aria-hidden
-              className="absolute inset-0 w-full h-full"
-            
-            />
+            <div aria-hidden className="absolute inset-0 w-full h-full" />
             <div className="p-8 lg:p-12 relative z-10">
               <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
                 <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
@@ -303,7 +316,9 @@ const LoginPage = memo(() => {
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-slate-500">Or continue with email</span>
+                    <span className="bg-white px-2 text-slate-500">
+                      Or continue with email
+                    </span>
                   </div>
                 </div>
 
@@ -323,7 +338,9 @@ const LoginPage = memo(() => {
                         placeholder="Enter your email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
+                        className={`pl-10 ${
+                          errors.email ? "border-red-500" : ""
+                        }`}
                         disabled={loading}
                       />
                     </div>
@@ -346,7 +363,9 @@ const LoginPage = memo(() => {
                         placeholder="Enter your password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className={`pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
+                        className={`pl-10 pr-10 ${
+                          errors.password ? "border-red-500" : ""
+                        }`}
                         disabled={loading}
                       />
                       <button
@@ -367,14 +386,14 @@ const LoginPage = memo(() => {
                     )}
                   </div>
 
-                  {/* Submit Button */}
-                  <Button
+                  {/* Submit Button (HoverButton) */}
+                  <HoverButton
                     type="submit"
                     className="w-full"
                     disabled={loading || googleLoading}
                   >
                     {loading ? "Signing In..." : "Sign In"}
-                  </Button>
+                  </HoverButton>
                 </form>
 
                 {/* Meta */}

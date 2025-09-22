@@ -17,7 +17,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { addDays, sameDay } from "@/lib/dateHelpers";
 import { getMonthMatrix, getWeekRange } from "@/lib/calendarMatrix";
 import { getEventsOnDate } from "@/lib/eventHelpers";
-import { formatDateHead, formatDayNum, formatWeekdayShort, formatTime } from "@/lib/formatters";
+import {
+  formatDateHead,
+  formatDayNum,
+  formatWeekdayShort,
+  formatTime,
+} from "@/lib/formatters";
 import { useCalendarNavigation } from "@/hooks/useCalendarNavigation";
 import { useNavigate } from "react-router-dom";
 
@@ -27,7 +32,15 @@ export default function ScheduleCalendarPage({
 }) {
   // views: month | week | day
   const [view, setView] = useState("month");
-  const { currentDate, setCurrentDate, selectedDate, setSelectedDate, gotoToday, gotoPrev, gotoNext } = useCalendarNavigation();
+  const {
+    currentDate,
+    setCurrentDate,
+    selectedDate,
+    setSelectedDate,
+    gotoToday,
+    gotoPrev,
+    gotoNext,
+  } = useCalendarNavigation();
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
@@ -47,7 +60,8 @@ export default function ScheduleCalendarPage({
           title: "Error",
           description: err.message || "Failed to fetch schedules",
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
         console.error("Error fetching schedules:", err);
       } finally {
@@ -82,7 +96,7 @@ export default function ScheduleCalendarPage({
 
   const openEvent = (id) => {
     if (onOpenEvent) return onOpenEvent(id);
-    navigate('/schedules/' + id);
+    navigate("/schedules/" + id);
   };
 
   const createSchedule = () => {
@@ -105,7 +119,7 @@ export default function ScheduleCalendarPage({
               Lihat semua jadwal posting dalam tampilan bulan/minggu/hari.
             </p>
           </div>
-            <div className="flex gap-2">
+          <div className="flex gap-2">
             <HoverButton
               onClick={createSchedule}
               className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
@@ -215,7 +229,9 @@ export default function ScheduleCalendarPage({
                       <div className="mb-1 flex items-center justify-between">
                         <button
                           className={`text-sm sm:text-xs rounded-lg px-2 py-1 sm:px-1 sm:py-0.5 ${
-                            isToday ? "btn-bg-orange text-black" : "text-slate-700"
+                            isToday
+                              ? "btn-bg-orange text-black"
+                              : "text-slate-700"
                           } touch-manipulation cursor-pointer`}
                           onClick={() => {
                             setView("day");
@@ -279,12 +295,20 @@ export default function ScheduleCalendarPage({
                       <div className="text-sm sm:text-xs text-slate-500 font-medium">
                         {formatWeekdayShort(d)}
                       </div>
-                      <Badge
-                        variant={isToday ? "default" : "secondary"}
-                        className="text-xs"
+                      <button
+                        className={`text-sm sm:text-xs rounded-lg px-2 py-1 sm:px-1 sm:py-0.5 ${
+                          isToday
+                            ? "btn-bg-orange text-black border-black"
+                            : "text-slate-700"
+                        } touch-manipulation cursor-pointer`}
+                        onClick={() => {
+                          setView("day");
+                          setCurrentDate(d);
+                          setSelectedDate(d);
+                        }}
                       >
                         {formatDayNum(d)}
-                      </Badge>
+                      </button>
                     </div>
                     <div className="flex flex-col gap-2">
                       {list.length === 0 && (
@@ -293,36 +317,19 @@ export default function ScheduleCalendarPage({
                         </div>
                       )}
                       {list.map((ev) => (
-                        <button
+                        <div
                           key={ev.id}
-                          className="flex flex-col items-start rounded-lg border p-3 sm:p-2 text-left hover:bg-slate-50 touch-manipulation cursor-pointer"
                           onClick={() => openEvent(ev.id)}
+                          className="cursor-pointer truncate rounded-md btn-bg-orange px-2 py-1.5 sm:py-1 text-xs sm:text-[11px] text-black hover:opacity-90 touch-manipulation border-black"
+                          title={`${ev.title} • ${formatTime(
+                            ev.start
+                          )}-${formatTime(ev.end)}`}
                         >
-                          <div className="text-base sm:text-sm font-medium leading-5 line-clamp-2">
-                            {ev.title}
-                          </div>
-                          <div className="mt-2 flex items-center gap-2 text-sm sm:text-xs text-slate-600">
-                            <Clock className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                            <span>
-                              {formatTime(ev.start)}–{formatTime(ev.end)}
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              {ev.platform}
-                            </Badge>
-                            <Badge
-                              variant={
-                                ev.status === "posted"
-                                  ? "default"
-                                  : ev.status === "pending" || ev.status === "processing"
-                                  ? "secondary"
-                                  : "destructive"
-                              }
-                              className="text-xs"
-                            >
-                              {ev.status === 'processing' ? 'processing…' : ev.status}
-                            </Badge>
-                          </div>
-                        </button>
+                          <span className="font-medium">{ev.title}</span>
+                          <span className="ml-2 opacity-80">
+                            {formatTime(ev.start)}
+                          </span>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -348,7 +355,7 @@ export default function ScheduleCalendarPage({
                       })}
                     </div>
                   </div>
-                    <div className="flex gap-2">
+                  <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="icon"
@@ -386,41 +393,30 @@ export default function ScheduleCalendarPage({
                         </div>
                       );
                     return list.map((ev) => (
-                      <button
+                      <div
                         key={ev.id}
-                        className="flex items-center justify-between rounded-xl border p-3 text-left hover:bg-slate-50 cursor-pointer"
                         onClick={() => openEvent(ev.id)}
+                        className="cursor-pointer truncate rounded-md btn-bg-orange px-3 py-2 text-sm text-black hover:opacity-90 touch-manipulation border-black flex items-center justify-between"
+                        title={`${ev.title} • ${formatTime(
+                          ev.start
+                        )}-${formatTime(ev.end)}`}
                       >
-                        <div>
-                          <div className="text-sm font-medium leading-5">
-                            {ev.title}
-                          </div>
-                          <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span>
-                              {formatTime(ev.start)}–{formatTime(ev.end)}
-                            </span>
-                            <Badge variant="outline">{ev.platform}</Badge>
-                            <Badge
-                              variant={
-                                ev.status === "posted"
-                                  ? "default"
-                                  : ev.status === "pending" || ev.status === 'processing'
-                                  ? "secondary"
-                                  : "destructive"
-                              }
-                            >
-                              {ev.status === 'processing' ? 'processing…' : ev.status}
-                            </Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="font-medium">{ev.title}</div>
+                          <div className="text-xs opacity-80">
+                            {formatTime(ev.start)}
                           </div>
                         </div>
-                        <Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-sm btn-bg-orange border-black"
+                        >
                           {selectedDate.toLocaleDateString(undefined, {
                             month: "short",
                           })}{" "}
                           {formatDayNum(selectedDate)}
                         </Badge>
-                      </button>
+                      </div>
                     ));
                   })()}
                 </div>
@@ -432,17 +428,11 @@ export default function ScheduleCalendarPage({
                 <div className="text-sm font-medium mb-2">Quick Actions</div>
                 <div className="flex flex-col gap-2">
                   <Button
-                    onClick={createSchedule}
-                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
-                  >
-                    <Plus className="mr-2 h-4 w-4" /> Create Schedule
-                  </Button>
-                  <Button
                     variant="secondary"
                     onClick={() => {
                       setView("week");
                     }}
-                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
+                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer btn-default"
                   >
                     View This Week
                   </Button>
@@ -451,7 +441,7 @@ export default function ScheduleCalendarPage({
                     onClick={() => {
                       setView("month");
                     }}
-                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer"
+                    className="h-10 sm:h-9 px-4 sm:px-3 touch-manipulation cursor-pointer btn-default"
                   >
                     View This Month
                   </Button>

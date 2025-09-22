@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Clock, Video, Hash, Play } from "lucide-react";
+import { CalendarDays, Clock, Video, Hash, Play, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import HoverButton from "@/components/ui/HoverButton";
 import {
   Card,
   CardHeader,
@@ -51,7 +52,8 @@ export default function ScheduleDetailPage() {
         toast({
           title: "Gagal Memuat Schedule",
           description: err.response?.data?.error || "Failed to fetch schedule",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       } finally {
         setLoading(false);
@@ -140,13 +142,15 @@ export default function ScheduleDetailPage() {
       toast({
         title: "Schedule Berhasil Diperbarui",
         description: data?.message || "Schedule berhasil diperbarui",
-        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        className:
+          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
       });
     } catch (e) {
       toast({
         title: "Gagal Memperbarui Schedule",
         description: e?.response?.data?.error || "Gagal memperbarui schedule",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
     } finally {
       setSubmitting(false);
@@ -160,19 +164,20 @@ export default function ScheduleDetailPage() {
       toast({
         title: "Schedule Berhasil Dihapus",
         description: "Schedule telah berhasil dihapus",
-        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        className:
+          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
       });
-      
+
       // Give user time to see the success toast before redirecting
       setTimeout(() => {
         window.location.href = "/schedules";
       }, 2000); // 2 seconds delay
-      
     } catch (e) {
       toast({
         title: "Gagal Menghapus Schedule",
         description: e?.response?.data?.error || "Gagal menghapus schedule",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
       setDeleting(false); // Only reset deleting state on error, not on success
     }
@@ -181,11 +186,11 @@ export default function ScheduleDetailPage() {
 
   const statusBadge =
     schedule.status === "posted" ? (
-      <Badge className="bg-green-600 text-white">Posted</Badge>
+      <Badge className="btn-green border-black font-normal">Posted</Badge>
     ) : schedule.status === "failed" ? (
-      <Badge className="bg-red-600 text-white">Failed</Badge>
+      <Badge className="bg-red-100 text-black border-black">Failed</Badge>
     ) : (
-      <Badge className="bg-amber-500 text-white">Pending</Badge>
+      <Badge className="btn-orange border-black">Pending</Badge>
     );
 
   const logs = [
@@ -210,9 +215,13 @@ export default function ScheduleDetailPage() {
             {schedule.status === "pending" ? (
               editing ? (
                 <>
-                  <Button size="sm" onClick={saveEdits} disabled={submitting}>
+                  <HoverButton
+                    size="sm"
+                    onClick={saveEdits}
+                    disabled={submitting}
+                  >
                     {submitting ? "Menyimpan…" : "Simpan"}
-                  </Button>
+                  </HoverButton>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -224,14 +233,19 @@ export default function ScheduleDetailPage() {
                 </>
               ) : (
                 <>
-                  <Button variant="outline" onClick={enterEditMode}>
+                  <HoverButton
+                    type="button"
+                    className="px-3 py-1 w-auto cursor-pointer border border-black"
+                    onClick={enterEditMode}
+                  >
                     Edit
-                  </Button>
+                  </HoverButton>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
                         variant="ghost"
                         disabled={deleting}
+                        className="border border-black"
                       >
                         {deleting ? "Menghapus…" : "Delete"}
                       </Button>
@@ -240,7 +254,8 @@ export default function ScheduleDetailPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Hapus Schedule</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Apakah Anda yakin ingin menghapus schedule ini? Tindakan ini tidak dapat dibatalkan.
+                          Apakah Anda yakin ingin menghapus schedule ini?
+                          Tindakan ini tidak dapat dibatalkan.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -260,11 +275,13 @@ export default function ScheduleDetailPage() {
               <div className="flex gap-2">
                 <Button
                   variant="outline"
+                  className="border border-black"
                   onClick={() => {
                     toast({
                       title: "Tidak Dapat Diedit",
                       description: `Schedule tidak dapat diedit karena status sudah ${schedule.status}`,
-                      className: "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
+                      className:
+                        "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
                     });
                   }}
                 >
@@ -272,11 +289,13 @@ export default function ScheduleDetailPage() {
                 </Button>
                 <Button
                   variant="ghost"
+                  className="border border-black"
                   onClick={() => {
                     toast({
                       title: "Tidak Dapat Dihapus",
                       description: `Schedule tidak dapat dihapus karena status sudah ${schedule.status}`,
-                      className: "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
+                      className:
+                        "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
                     });
                   }}
                 >
@@ -290,18 +309,18 @@ export default function ScheduleDetailPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Video preview */}
           <Card className="lg:col-span-2 overflow-hidden">
-            <div className="relative aspect-square max-w-sm mx-auto w-full bg-black/5">
+            <div className="relative w-full max-w-[360px] mx-auto aspect-[9/16] rounded-xl overflow-hidden border bg-white">
               {schedule.video_id?.secure_url ? (
                 <video
                   src={schedule.video_id.secure_url}
-                  className="absolute inset-0 h-full w-full object-contain bg-black"
+                  className="absolute inset-0 h-full w-full object-cover"
                   controls
                   playsInline
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 bg-black/80">
-                  <Play className="h-10 w-10" />
-                  <span className="text-sm text-white/80">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500 bg-black/5">
+                  <Play className="h-10 w-10 text-slate-600" />
+                  <span className="text-sm text-slate-600">
                     (Preview video akan tampil di sini)
                   </span>
                 </div>
@@ -371,7 +390,7 @@ export default function ScheduleDetailPage() {
 
               <div>
                 <div className="mb-1 text-sm font-medium flex items-center gap-2">
-                  <Video className="h-4 w-4" /> Caption
+                  Caption
                 </div>
                 {!editing ? (
                   <div className="rounded-xl border p-3 text-sm bg-white">
@@ -395,14 +414,14 @@ export default function ScheduleDetailPage() {
                       else navigator.clipboard?.writeText(editCaption || "");
                     }}
                   >
-                    Copy Caption
+                    <Copy className="mr-2 h-4 w-4" /> copy
                   </Button>
                 </div>
               </div>
 
               <div>
                 <div className="mb-1 text-sm font-medium flex items-center gap-2">
-                  <Hash className="h-4 w-4" /> Hashtags
+                  Hashtags
                 </div>
                 {!editing ? (
                   <div className="flex flex-wrap gap-2">
@@ -445,7 +464,7 @@ export default function ScheduleDetailPage() {
                       else navigator.clipboard?.writeText(editHashtags || "");
                     }}
                   >
-                    Copy Hashtags
+                    <Copy className="mr-2 h-4 w-4" /> copy
                   </Button>
                 </div>
               </div>
@@ -487,39 +506,6 @@ export default function ScheduleDetailPage() {
             </CardContent>
           </Card>
         </div>
-
-        {/* Activity / Logs */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Aktivitas</CardTitle>
-            <CardDescription>Riwayat status & tindakan.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-2">
-              {logs.length === 0 && (
-                <div className="rounded-xl border border-dashed p-6 text-center text-sm text-slate-500">
-                  Belum ada aktivitas
-                </div>
-              )}
-              {logs.map((log, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between rounded-xl border p-3 text-sm"
-                >
-                  <div>{log.text}</div>
-                  <div className="text-xs text-slate-500">
-                    {fmtDateTime(log.time)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter className="flex items-center justify-end">
-            <div className="text-xs text-slate-500">
-              Terakhir diperbarui: {fmtDateTime(schedule.updatedAt)}
-            </div>
-          </CardFooter>
-        </Card>
       </div>
     </div>
   );
