@@ -1,6 +1,9 @@
-import React, { useMemo, useState } from "react";
+"use client";
+
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import AOS from "aos";
+import "aos/dist/aos.css";
 import HoverButton from "@/components/ui/HoverButton";
 import { StickyScroll } from "../components/ui/sticky-scroll-reveal";
 import { WobbleCard } from "../components/ui/wobble-card";
@@ -16,9 +19,6 @@ import travel from "../assets/travel.svg";
 import workEmployee from "../assets/work-employee.svg";
 import photograpy from "../assets/photograpy.svg";
 import selfie from "../assets/selfie.svg";
-import { Check, Sparkles, Star, Crown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { PointerHighlight } from "@/components/ui/pointer-highlight";
 
 const content = [
@@ -102,11 +102,19 @@ const content = [
 export function Features() {
   return (
     <>
-      <section className="mb-20 bg-planoria pt-1">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-bold text-center mt-16 mb-8 text-slate-900">
+      <section
+        className="mb-20 bg-planoria pt-1"
+        data-aos="zoom-in"
+        data-aos-delay="80"
+      >
+        <h1
+          className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-bold text-center mt-16 mb-8 text-slate-900"
+          data-aos="zoom-in"
+          data-aos-delay="120"
+        >
           Our Features
         </h1>
-        <div className="w-full">
+        <div className="w-full" data-aos="zoom-in" data-aos-delay="180">
           <StickyScroll content={content} />
         </div>
       </section>
@@ -116,20 +124,33 @@ export function Features() {
 
 export function HowItWorks() {
   return (
-    <section className="mb-20 py-10 bg-planoria">
-      <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-bold text-center mt-16 mb-8 text-slate-900">
+    <section
+      className="mb-20 py-10 bg-planoria"
+      data-aos="zoom-in"
+      data-aos-delay="80"
+    >
+      <h1
+        className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-bold text-center mt-16 mb-8 text-slate-900"
+        data-aos="zoom-in"
+        data-aos-delay="120"
+      >
         How it Works
       </h1>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full mt-12 mb-20">
-        <WobbleCard
-          containerClassName="col-span-1 lg:col-span-2 h-full bg-pink-800 min-h-[500px] lg:min-h-[300px]"
-          className=""
-        >
+      <div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-7xl mx-auto w-full mt-12 mb-20"
+        data-aos="zoom-in"
+        data-aos-delay="160"
+      >
+        <WobbleCard containerClassName="col-span-1 lg:col-span-2 h-full bg-pink-800 min-h-[500px] lg:min-h-[300px]">
           <div className="max-w-xs">
-            <h2 className="text-left text-balance text-base md:text-xl lg:text-3xl font-semibold tracking-[-0.015em] text-white">
+            <h2
+              className="text-left text-balance text-base md:text-xl lg:text-3xl font-semibold tracking-[-0.015em] text-white"
+              data-aos="fade-right"
+              data-aos-delay="200"
+            >
               1. From Ideas to Storyboards
             </h2>
-            <p className="mt-4 text-left  text-base/6 text-neutral-200">
+            <p className="mt-4 text-left text-base/6 text-neutral-200">
               Start with scattered thoughts, raw notes, or audience personas.
               Planoria helps you capture them all and instantly shape them into
               clear, visual storyboards that map the flow of your campaign.
@@ -143,22 +164,32 @@ export function HowItWorks() {
             className="absolute -right-4 md:-right-8 lg:-right-12 xl:-right-16 grayscale filter -bottom-10 object-contain rounded-2xl"
           />
         </WobbleCard>
+
         <WobbleCard containerClassName="col-span-1 min-h-[300px]">
-          <h2 className="max-w-80  text-left text-balance text-base md:text-xl lg:text-3xl font-semibold tracking-[-0.015em] text-white">
+          <h2
+            className="max-w-80 text-left text-balance text-base md:text-xl lg:text-3xl font-semibold tracking-[-0.015em] text-white"
+            data-aos="fade-left"
+            data-aos-delay="220"
+          >
             2. Optimize with AI
           </h2>
-          <p className="mt-4 max-w-[26rem] text-left  text-base/6 text-neutral-200">
+          <p className="mt-4 max-w-[26rem] text-left text-base/6 text-neutral-200">
             Before you publish, AI reviews your content — suggesting captions,
             hashtags, and hooks, and even giving feedback on videos. It makes
             sure every piece of content is polished and ready to perform.
           </p>
         </WobbleCard>
-        <WobbleCard containerClassName="col-span-1 lg:col-span-3 bg-blue-900 min-h-[500px] lg:min-h-[600px] xl:min-h-[300px]">
+
+        <WobbleCard containerClassName="col-span-1 lg:col-span-3 bg-blue-900 min-h=[500px] lg:min-h-[600px] xl:min-h-[300px]">
           <div className="max-w-sm">
-            <h2 className="max-w-sm md:max-w-lg  text-left text-balance text-base md:text-xl lg:text-3xl font-semibold tracking-[-0.015em] text-white">
+            <h2
+              className="max-w-sm md:max-w-lg text-left text-balance text-base md:text-xl lg:text-3xl font-semibold tracking-[-0.015em] text-white"
+              data-aos="fade-right"
+              data-aos-delay="240"
+            >
               3. Schedule & Autopost
             </h2>
-            <p className="mt-4 max-w-[26rem] text-left  text-base/6 text-neutral-200">
+            <p className="mt-4 max-w-[26rem] text-left text-base/6 text-neutral-200">
               Once everything is set, organize your content on a smart calendar
               and let autoposting deliver it across platforms consistently — so
               you never miss the perfect moment.
@@ -170,6 +201,8 @@ export function HowItWorks() {
             height={300}
             alt="linear demo image"
             className="absolute -right-4 md:-right-8 lg:-right-12 xl:-right-16 -bottom-10 grayscale filter object-contain rounded-2xl"
+            data-aos="fade-up"
+            data-aos-delay="260"
           />
         </WobbleCard>
       </div>
@@ -177,223 +210,20 @@ export function HowItWorks() {
   );
 }
 
-// Helper: currency formatting
-const formatPrice = (price) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(price);
-
-const TIERS = [
-  {
-    id: "free",
-    name: "Free",
-    icon: Sparkles,
-    tagline: "Mulai tanpa biaya",
-    monthly: 0,
-    yearly: 0,
-    highlight: false,
-    cta: "Coba Gratis",
-    features: [
-      "Akses dasar",
-      "Kuota 3 proyek",
-      "Update mingguan via email",
-      "Dukungan komunitas",
-    ],
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    icon: Star,
-    tagline: "Fitur lebih untuk tim kecil",
-    monthly: 12,
-    yearly: 108, // 25% off (12*12=144 -> 108)
-    highlight: true,
-    badge: "Paling Populer",
-    cta: "Pilih Premium",
-    features: [
-      "Semua di Free",
-      "Tanpa batas proyek",
-      "Integrasi & otomasi",
-      "Analytics dasar",
-      "Email support 24/5",
-    ],
-  },
-  {
-    id: "pro",
-    name: "Pro",
-    icon: Crown,
-    tagline: "Skala profesional & bisnis",
-    monthly: 29,
-    yearly: 264, // 24% off (29*12=348 -> 264)
-    highlight: false,
-    cta: "Naik ke Pro",
-    features: [
-      "Semua di Premium",
-      "SLA & prioritas dukungan",
-      "Advanced analytics",
-      "SSO / SAML",
-      "Akses beta & peta jalan",
-    ],
-  },
-];
-
-function PricingTiers() {
-  const [annual, setAnnual] = useState(true);
-
-  const tiers = useMemo(
-    () =>
-      TIERS.map((t) => ({
-        ...t,
-        price: annual ? t.yearly : t.monthly,
-        suffix: annual ? "/thn" : "/bln",
-      })),
-    [annual]
-  );
-
-  return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-slate-50 to-white py-14 px-4">
-      <div className="mx-auto max-w-6xl">
-        {/* Heading */}
-        <div className="text-center mb-10">
-          <motion.h1
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-900"
-          >
-            Paket Harga Sederhana
-          </motion.h1>
-          <p className="mt-3 text-slate-600 max-w-2xl mx-auto">
-            Pilih tier sesuai kebutuhanmu — bisa mulai gratis dan upgrade kapan
-            saja.
-          </p>
-
-          {/* Billing toggle */}
-          <div className="mt-6 inline-flex items-center gap-3 rounded-full bg-slate-100 px-4 py-2">
-            <span
-              className={`text-sm ${
-                annual ? "text-slate-500" : "text-slate-900 font-medium"
-              }`}
-            >
-              Bulanan
-            </span>
-            <Switch
-              aria-label="Toggle penagihan tahunan"
-              checked={annual}
-              onCheckedChange={setAnnual}
-            />
-            <div className="flex items-center gap-2">
-              <span
-                className={`text-sm ${
-                  annual ? "text-slate-900 font-medium" : "text-slate-500"
-                }`}
-              >
-                Tahunan
-              </span>
-              <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                Hemat hingga 25%
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
-          {tiers.map((tier, idx) => (
-            <motion.div
-              key={tier.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: idx * 0.06 }}
-            >
-              <Card
-                className={`relative h-full border-slate-200 ${
-                  tier.highlight ? "ring-2 ring-amber-400" : ""
-                } rounded-2xl shadow-sm`}
-              >
-                {tier.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1 shadow">
-                      <Star className="w-3.5 h-3.5" /> {tier.badge}
-                    </span>
-                  </div>
-                )}
-
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <tier.icon className="w-5 h-5 text-slate-500" />
-                      <CardTitle className="text-xl font-semibold">
-                        {tier.name}
-                      </CardTitle>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-500">{tier.tagline}</p>
-
-                  {/* Price */}
-                  <div className="mt-4 flex items-end gap-1">
-                    <span className="text-4xl font-bold tracking-tight">
-                      {tier.price === 0 ? "Gratis" : formatPrice(tier.price)}
-                    </span>
-                    {tier.price !== 0 && (
-                      <span className="text-sm text-slate-500 mb-2">
-                        {tier.suffix}
-                      </span>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex flex-col h-full">
-                  <ul className="space-y-3 mb-6">
-                    {tier.features.map((f, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <Check className="w-4 h-4 mt-0.5" />
-                        <span className="text-sm text-slate-700">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <div className="mt-auto">
-                    <Button
-                      className={`w-full rounded-xl ${
-                        tier.highlight ? "bg-amber-500 hover:bg-amber-600" : ""
-                      }`}
-                    >
-                      {tier.cta}
-                    </Button>
-                    <p className="mt-3 text-xs text-slate-500 text-center">
-                      Tidak perlu kartu kredit
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Tiny FAQ / footnote */}
-        <div className="max-w-3xl mx-auto text-center mt-12 text-sm text-slate-500">
-          Harga dalam USD untuk contoh. Sesuaikan label, mata uang, dan fitur
-          sesuai produkmu.
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function FooterSection() {
   return (
     <footer className="w-full bg-white text-slate-900">
       {/* CTA block */}
-      <div className="max-w-6xl mx-auto px-6 py-16 text-center">
+      <div
+        className="max-w-6xl mx-auto px-6 py-16 text-center"
+        data-aos="zoom-in"
+        data-aos-delay="80"
+      >
         <h2 className="text-2xl leading-tight font-serif font-bold tracking-tight sm:text-3xl md:text-4xl lg:text-5xl">
           Your ideas are ready. Are you?
           <br className="hidden sm:block" /> Join the creators who plan smarter
           with Planoria.
         </h2>
-
         <div className="mt-6 flex justify-center">
           <HoverButton href="/register">Get Planoria</HoverButton>
         </div>
@@ -409,7 +239,7 @@ export function FooterSection() {
             <img
               src="/src/assets/planoria-logo.png"
               alt="Planoria Logo"
-              className="h-15 w-auto"
+              className="h-10 w-auto"
             />
           </div>
 
@@ -482,6 +312,11 @@ export default function HeroSection() {
   ];
 
   // Fisher-Yates shuffle helper
+  /**
+   * @template T
+   * @param {T[]} arr
+   * @returns {T[]}
+   */
   const shuffleArray = (arr) => {
     const a = [...arr];
     for (let i = a.length - 1; i > 0; i--) {
@@ -493,11 +328,10 @@ export default function HeroSection() {
 
   // Precompute randomized sets once per mount
   const leftPortraits = useMemo(() => shuffleArray(portraits).slice(0, 5), []);
-  // Ensure rightPortraits are different from leftPortraits: shuffle and exclude left picks
+  // Ensure rightPortraits are different from leftPortraits
   const rightPortraits = useMemo(() => {
     const remaining = portraits.filter((p) => !leftPortraits.includes(p));
     const shuffled = shuffleArray(remaining);
-    // If not enough remaining items, fall back to shuffled full set (ensures 5 items)
     const source =
       shuffled.length >= 5
         ? shuffled
@@ -506,6 +340,7 @@ export default function HeroSection() {
             .concat(shuffleArray(portraits));
     return source.slice(0, 5);
   }, [leftPortraits]);
+
   const horizontalBase = useMemo(() => shuffleArray(portraits).slice(0, 5), []);
   const horizontalPortraits = useMemo(
     () => horizontalBase.concat(horizontalBase),
@@ -529,10 +364,52 @@ export default function HeroSection() {
     );
   };
 
+  // AOS init and scroll direction detection
+  const [scrollDown, setScrollDown] = useState(false);
+  const lastScrollRef = useRef(
+    typeof window !== "undefined" ? window.scrollY : 0
+  );
+  const scrollDownRef = useRef(false);
+
+  useEffect(() => {
+    AOS.init({ once: false, mirror: true, duration: 500, offset: 150 });
+    AOS.refresh();
+
+    const onScroll = () => {
+      const y = window.scrollY;
+      const goingDown = y > lastScrollRef.current + 10;
+      const goingUp = y < lastScrollRef.current - 10;
+
+      if (goingDown && !scrollDownRef.current) {
+        scrollDownRef.current = true;
+        setScrollDown(true);
+      } else if (goingUp && scrollDownRef.current) {
+        scrollDownRef.current = false;
+        setScrollDown(false);
+      }
+
+      lastScrollRef.current = y;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <>
       <Navbar />
       <section className="relative isolate overflow-hidden h-screen flex items-center pt-16 pb-4 sm:pb-6 lg:pb-8 bg-planoria">
+        {/* Inline styles for marquee animations */}
+        <style>{`
+          @keyframes marquee-vert-left { from { transform: translateY(0); } to { transform: translateY(-600px); } }
+          @keyframes marquee-vert-right { from { transform: translateY(0); } to { transform: translateY(-300px); } }
+          @keyframes marquee-horz { from { transform: translateX(0); } to { transform: translateX(-500px); } }
+
+          .animate-marquee-vert-left { animation: marquee-vert-left 10s linear infinite; }
+          .animate-marquee-vert-right { animation: marquee-vert-right 10s linear infinite; }
+          .animate-marquee-horz { animation: marquee-horz 10s linear infinite; }
+        `}</style>
+
         {/* background gradient */}
         <div
           aria-hidden
@@ -546,12 +423,20 @@ export default function HeroSection() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 w-full h-full grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 xl:gap-16 items-center lg:items-center">
           {/* Left column */}
           <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
+            {/* HEADER HERO SECTION */}
+            <motion.h1
+              animate={{
+                y: scrollDown ? -200 : 0,
+                opacity: scrollDown ? 0.9 : 1,
+              }}
+              transition={{ type: "spring", stiffness: 120, damping: 18 }}
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900"
+            >
               <PointerHighlight>
                 Turn Ideas Into Impactful Stories with Planoria
                 <span className="align-super">^</span>
               </PointerHighlight>
-            </h1>
+            </motion.h1>
 
             <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <HoverButton href="/login">Get Started</HoverButton>
@@ -559,24 +444,19 @@ export default function HeroSection() {
           </div>
 
           {/* Right column: marquees */}
-          <div className="h-80 sm:h-96 md:h-100 lg:h-120 xl:h-140 mt-6 sm:mt-8 lg:mt-0">
+          <div className="h-80 sm:h-96 md:h-[28rem] lg:h-[32rem] xl:h-[36rem] mt-6 sm:mt-8 lg:mt-0">
             {/* Large screens: 2 vertical columns */}
             <div className="hidden lg:grid grid-cols-2 gap-6 lg:gap-8 h-full">
               {/* Left column moves upward */}
               <div className="overflow-hidden flex-1">
-                <motion.div
-                  animate={{ y: [0, -600] }}
-                  transition={{
-                    duration: 10,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="flex flex-col gap-4"
+                <div
+                  className="flex flex-col gap-4 animate-marquee-vert-left"
+                  aria-hidden
                 >
                   {leftPortraits.concat(leftPortraits).map((src, i) => (
                     <div
                       key={i}
-                      className={`w-48 h-64 overflow-hidden flex items-center justify-center`}
+                      className="w-48 h-64 overflow-hidden flex items-center justify-center"
                     >
                       <img
                         src={src}
@@ -585,24 +465,19 @@ export default function HeroSection() {
                       />
                     </div>
                   ))}
-                </motion.div>
+                </div>
               </div>
 
-              {/* Right column moves downward */}
+              {/* Right column moves */}
               <div className="overflow-hidden flex-1">
-                <motion.div
-                  animate={{ y: [0, -300] }}
-                  transition={{
-                    duration: 10,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="flex flex-col gap-4"
+                <div
+                  className="flex flex-col gap-4 animate-marquee-vert-right"
+                  aria-hidden
                 >
                   {rightPortraits.concat(rightPortraits).map((src, i) => (
                     <div
                       key={i}
-                      className={`w-48 h-64 overflow-hidden flex items-center justify-center`}
+                      className="w-48 h-64 overflow-hidden flex items-center justify-center"
                     >
                       <img
                         src={src}
@@ -611,25 +486,20 @@ export default function HeroSection() {
                       />
                     </div>
                   ))}
-                </motion.div>
+                </div>
               </div>
             </div>
 
             {/* Small and Medium screens: horizontal marquee */}
             <div className="lg:hidden overflow-hidden w-full h-[30rem] sm:h-[34rem] md:h-[38rem]">
-              <motion.div
-                animate={{ x: [0, -500] }}
-                transition={{
-                  duration: 10,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-                className="flex flex-row gap-6 sm:gap-8"
+              <div
+                className="flex flex-row gap-6 sm:gap-8 animate-marquee-horz"
+                aria-hidden
               >
                 {horizontalPortraits.map((src, i) => (
                   <div
                     key={i}
-                    className={`w-80 h-[34rem] sm:w-[22rem] sm:h-[38rem] md:w-[26rem] md:h-[42rem] overflow-hidden flex-shrink-0 flex items-center justify-center`}
+                    className="w-80 h-[34rem] sm:w-[22rem] sm:h-[38rem] md:w-[26rem] md:h-[42rem] overflow-hidden flex-shrink-0 flex items-center justify-center"
                   >
                     <img
                       src={src}
@@ -638,14 +508,14 @@ export default function HeroSection() {
                     />
                   </div>
                 ))}
-              </motion.div>
+              </div>
             </div>
           </div>
         </div>
       </section>
+
       <Features />
       <HowItWorks />
-      <PricingTiers />
       <FooterSection />
     </>
   );

@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, memo } from "react";
+import AOS from "aos";
+import "aos/dist/aos.css";
 import { Link, useNavigate } from "react-router";
 import {
   Card,
@@ -237,6 +239,12 @@ const LoginPage = memo(() => {
     }
   }, [handleCredentialResponse, toast]);
 
+  // Initialize AOS for this page (allow re-animations when scrolling up)
+  useEffect(() => {
+    AOS.init({ once: false, mirror: true, duration: 450, offset: 120 });
+    AOS.refresh();
+  }, []);
+
   return (
     <div className="min-h-screen bg-white">
       {/* Top bar (Back / Sign up) */}
@@ -262,7 +270,7 @@ const LoginPage = memo(() => {
       >
         <div className="flex w-full items-center gap-8 lg:gap-16">
           {/* LEFT: Hero content (hide on small screens) */}
-          <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden">
+          <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden" data-aos="zoom-in" data-aos-delay="120">
             <div aria-hidden className="absolute inset-0 w-full h-full" />
             <div className="p-8 lg:p-12 relative z-10">
               <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
@@ -276,7 +284,7 @@ const LoginPage = memo(() => {
 
           {/* RIGHT: Form */}
           <div className="flex-1">
-            <Card className="w-full max-w-md mx-auto">
+            <Card className="w-full max-w-md mx-auto" data-aos="zoom-in" data-aos-delay="80">
               <CardHeader className="space-y-2">
                 <CardTitle className="text-center text-2xl md:text-3xl">
                   Welcome
