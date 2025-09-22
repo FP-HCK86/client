@@ -28,6 +28,7 @@ function App() {
           <Route path="/logout" element={<LogoutPage />} />
           <Route path="/" element={<HeroSection />} />
           <Route path="/payment" element={<PaymentPage />} />
+          <Route path="/upgrade" element={<PaymentPage />} />
           <Route element={<SidebarLayout />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/schedules" element={<ScheduleCalendarPage />} />
