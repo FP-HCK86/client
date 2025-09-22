@@ -95,7 +95,7 @@ export default function PaymentPage() {
         <button onClick={startPaymentFlow} disabled={loading} className="rounded-md bg-purple-600 px-4 py-2 text-white">
           {loading ? 'Memproses...' : 'Bayar Sekarang'}
         </button>
-        <a href="/dashboard" className="rounded-md px-4 py-2 border">Batal</a>
+  <a href="/dashboard" className="rounded-md px-4 py-2 bg-white border-black">Batal</a>
       </div>
     </div>
   );

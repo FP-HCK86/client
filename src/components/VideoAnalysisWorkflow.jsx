@@ -277,7 +277,7 @@ const VideoAnalysisWorkflow = ({ onClose }) => {
                 <p className="text-gray-600 mb-4">
                   Pilih video dari library Anda untuk diekstrak transkripnya menggunakan AI
                 </p>
-                <Button onClick={handleStartAnalysis} size="lg" className="bg-blue-600 hover:bg-blue-700">
+                <Button onClick={handleStartAnalysis} size="lg" className="btn-default">
                   <PlayCircle className="h-5 w-5 mr-2" />
                   Pilih Video untuk Analisis
                 </Button>
@@ -294,7 +294,7 @@ const VideoAnalysisWorkflow = ({ onClose }) => {
                   <Button variant="outline" onClick={resetWorkflow}>
                     Pilih Video Lain
                   </Button>
-                  <Button onClick={() => handleConfirmAnalysis(selectedVideo)} className="bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={() => handleConfirmAnalysis(selectedVideo)} className="btn-default">
                     <Zap className="h-4 w-4 mr-2" />
                     Mulai Analisis
                   </Button>
@@ -325,7 +325,7 @@ const VideoAnalysisWorkflow = ({ onClose }) => {
                   <Button variant="outline" onClick={resetWorkflow}>
                     Analisis Video Lain
                   </Button>
-                  <Button onClick={() => setShowChatInterface(true)} className="bg-green-600 hover:bg-green-700">
+                  <Button onClick={() => setShowChatInterface(true)} className="btn-default">
                     <MessageCircle className="h-5 w-5 mr-2" />
                     Chat dengan AI
                   </Button>
