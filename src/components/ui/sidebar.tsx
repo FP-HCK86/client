@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 import React, { useState, createContext, useContext } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { IconMenu2, IconX } from "@tabler/icons-react";
+import planoriaLogo2 from "@/assets/planoria-logo-2.png";
+import planoriaLogo3 from "@/assets/planoria.png";
 
 interface Links {
   label: string;
@@ -93,7 +95,7 @@ export const DesktopSidebar = ({
     <>
       <motion.div
         className={cn(
-          "h-full px-4 py-4 hidden  md:flex md:flex-col bg-neutral-100 dark:bg-neutral-800 w-[300px] shrink-0",
+          "h-full px-4 py-4 hidden  md:flex md:flex-col bg-white border border:black dark:bg-neutral-800 w-[300px] shrink-0",
           className
         )}
         animate={{
@@ -119,16 +121,22 @@ export const MobileSidebar = ({
     <>
       <div
         className={cn(
-          "fixed top-0 inset-x-0 h-16 px-4 py-4 md:hidden flex flex-row items-center justify-between bg-neutral-100 dark:bg-neutral-800 w-full border-b border-neutral-200 dark:border-neutral-700 z-[500]"
+          "fixed top-0 inset-x-0 h-16 px-4 py-4 md:hidden flex flex-row items-center justify-between bg-white border border:black dark:bg-neutral-800 w-full border-b border-neutral-200 dark:border-neutral-700 z-[500]"
         )}
         {...props}
       >
         <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 bg-black rounded flex items-center justify-center">
-            <span className="text-white text-sm font-bold">A</span>
-          </div>
+          <img
+            src={planoriaLogo2}
+            alt="Planoria"
+            className="h-8 w-8 object-contain rounded"
+          />
           <span className="font-medium text-neutral-800 dark:text-neutral-200">
-            Acet Labs
+            <img
+              src={planoriaLogo3}
+              alt="Planoria"
+              className="h-15 w-15 object-contain rounded"
+            />
           </span>
         </div>
         <button
@@ -155,11 +163,17 @@ export const MobileSidebar = ({
             >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center space-x-2">
-                  <div className="h-8 w-8 bg-black rounded flex items-center justify-center">
-                    <span className="text-white text-sm font-bold">A</span>
-                  </div>
+                  <img
+                    src={planoriaLogo2}
+                    alt="Planoria"
+                    className="h-8 w-8 object-contain rounded"
+                  />
                   <span className="font-medium text-neutral-800 dark:text-neutral-200">
-                    Acet Labs
+                    <img
+                      src={planoriaLogo3}
+                      alt="Planoria"
+                      className="h-15 w-15 object-contain rounded"
+                    />
                   </span>
                 </div>
                 <button
@@ -196,7 +210,7 @@ export const SidebarLink = ({
     <a
       href={link.href}
       className={cn(
-        "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:cursor-pointer transition-colors",
+        "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer",
         open ? "justify-start" : "justify-center",
         isActive && "bg-neutral-200 dark:bg-neutral-700",
         className
@@ -258,7 +272,7 @@ export const SidebarCategory = ({
       <button
         onClick={handleClick}
         className={cn(
-          "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 hover:cursor-pointer transition-colors",
+          "flex items-center gap-2 group/sidebar py-2 px-2 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-colors cursor-pointer",
           open ? "justify-start" : "justify-center",
           isActive && "bg-neutral-200 dark:bg-neutral-700",
           className

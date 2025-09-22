@@ -17,7 +17,8 @@ import {
   IconLogout,
   IconBrush,
 } from "@tabler/icons-react";
-import planoriaLogo from "@/assets/planoria-logo.png";
+import planoriaLogo from "@/assets/planoria-logo-2.png";
+import planoriaLogo2 from "@/assets/planoria.png";
 
 const menuItems = [
   // Dashboard - direct link, no submenu
@@ -96,6 +97,11 @@ function Logo() {
   return (
     <a href="#" className="flex items-center space-x-2 py-1 text-sm">
       <img src={planoriaLogo} alt="Planoria" className="h-12 w-auto" />
+      <img
+        src={planoriaLogo2}
+        alt="Planoria"
+        className="h-20 w-20 object-contain"
+      />
     </a>
   );
 }
@@ -103,7 +109,11 @@ function Logo() {
 function LogoIcon() {
   return (
     <a href="#" className="flex items-center space-x-2 py-1 text-sm">
-      <img src={planoriaLogo} alt="Planoria" className="h-10 w-10 object-contain" />
+      <img
+        src={planoriaLogo}
+        alt="Planoria"
+        className="h-10 w-10 object-contain"
+      />
     </a>
   );
 }
