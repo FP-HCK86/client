@@ -47,10 +47,15 @@ export default function ScheduleCreatePage() {
       setUpgradeProcessing(true);
       // ensure snap script is loaded
       if (!window.snap) {
-        const script = document.querySelector('script[src*="snap.js"]') || document.createElement('script');
+        const script =
+          document.querySelector('script[src*="snap.js"]') ||
+          document.createElement("script");
         if (!script.parentNode) {
-          script.src = 'https://app.sandbox.midtrans.com/snap/snap.js';
-          script.setAttribute('data-client-key', import.meta.env.VITE_MIDTRANS_CLIENT_KEY);
+          script.src = "https://app.sandbox.midtrans.com/snap/snap.js";
+          script.setAttribute(
+            "data-client-key",
+            import.meta.env.VITE_MIDTRANS_CLIENT_KEY
+          );
           script.async = true;
           document.head.appendChild(script);
         }
@@ -60,30 +65,50 @@ export default function ScheduleCreatePage() {
           // eslint-disable-next-line no-await-in-loop
           await new Promise((r) => setTimeout(r, 150));
         }
-        if (!window.snap) throw new Error('Gagal memuat Midtrans');
+        if (!window.snap) throw new Error("Gagal memuat Midtrans");
       }
 
-      const { data } = await api.post('/payment/create');
-      if (!data || !data.token) throw new Error('Token pembayaran tidak tersedia');
+      const { data } = await api.post("/payment/create");
+      if (!data || !data.token)
+        throw new Error("Token pembayaran tidak tersedia");
 
       window.snap.pay(data.token, {
         onSuccess: async (result) => {
-          toast({ title: 'Pembayaran Berhasil', description: 'Akun Anda telah diupgrade ke Premium' });
+          toast({
+            title: "Pembayaran Berhasil",
+            description: "Akun Anda telah diupgrade ke Premium",
+          });
           // trigger backend status check
-          try { await api.get(`/payment/status?order_id=${encodeURIComponent(data.order_id)}`); } catch (e) { }
+          try {
+            await api.get(
+              `/payment/status?order_id=${encodeURIComponent(data.order_id)}`
+            );
+          } catch (e) {}
           // redirect back to create schedule
-          setTimeout(() => { window.location.href = '/schedules/create'; }, 900);
+          setTimeout(() => {
+            window.location.href = "/schedules/create";
+          }, 900);
         },
         onPending: (result) => {
-          toast({ title: 'Pembayaran Pending', description: 'Pembayaran sedang diproses.' });
+          toast({
+            title: "Pembayaran Pending",
+            description: "Pembayaran sedang diproses.",
+          });
         },
         onError: (result) => {
-          toast({ title: 'Pembayaran Gagal', description: 'Terjadi kesalahan pembayaran.' });
-        }
+          toast({
+            title: "Pembayaran Gagal",
+            description: "Terjadi kesalahan pembayaran.",
+          });
+        },
       });
     } catch (err) {
-      console.error('Inline upgrade error', err);
-      toast({ title: 'Error', description: err?.message || 'Terjadi kesalahan saat memulai pembayaran.' });
+      console.error("Inline upgrade error", err);
+      toast({
+        title: "Error",
+        description:
+          err?.message || "Terjadi kesalahan saat memulai pembayaran.",
+      });
     } finally {
       setUpgradeProcessing(false);
       setUpgradeRedirect(null);
@@ -104,9 +129,11 @@ export default function ScheduleCreatePage() {
         if (!mounted) return;
         toast({
           title: "Error",
-          description: e?.response?.data?.error || "Gagal memuat Video Library.",
+          description:
+            e?.response?.data?.error || "Gagal memuat Video Library.",
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -163,12 +190,13 @@ export default function ScheduleCreatePage() {
         title: "Success!",
         description: `✔ ${data?.message || "Schedule created"}`,
         variant: "default",
-        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        className:
+          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
       });
       if (data?.late?.postId) {
         setLateInfo({ postId: data.late.postId, mode: data.late.mode });
       } else if (data?.schedule?.vendor_job_id) {
-        setLateInfo({ postId: data.schedule.vendor_job_id, mode: 'scheduled' });
+        setLateInfo({ postId: data.schedule.vendor_job_id, mode: "scheduled" });
       } else {
         setLateInfo(null);
       }
@@ -181,7 +209,8 @@ export default function ScheduleCreatePage() {
         title: "Error",
         description: errMsg,
         variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
     } finally {
       setSubmitting(false);
@@ -211,25 +240,30 @@ export default function ScheduleCreatePage() {
               <CardTitle className="text-lg flex items-center justify-center gap-2">
                 <Video className="h-5 w-5" /> Pilih & Preview Video
               </CardTitle>
-              <CardDescription className="text-center">Ambil dari Video Library kamu.</CardDescription>
+              <CardDescription className="text-center">
+                Ambil dari Video Library kamu.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="text-sm text-slate-600">Memuat video…</div>
               ) : !selectedVideo ? (
                 <div className="flex items-center justify-center">
-                  <HoverButton onClick={() => setPickerOpen(true)} className="touch-manipulation cursor-pointer">
+                  <HoverButton
+                    onClick={() => setPickerOpen(true)}
+                    className="touch-manipulation cursor-pointer"
+                  >
                     Pilih Video
                   </HoverButton>
                 </div>
               ) : (
                 <div className="space-y-3 flex flex-col items-center">
-                  <div className="relative aspect-video w-full max-w-sm mx-auto overflow-hidden rounded-xl bg-black/5 ring-1 ring-slate-200">
+                  <div className="relative aspect-[9/16] w-full max-w-[360px] mx-auto overflow-hidden rounded-xl bg-white cursor-pointer">
                     {vUrl ? (
                       <video
                         src={vUrl}
                         controls
-                        className="absolute inset-0 h-full w-full object-contain bg-black"
+                        className="absolute inset-0 h-full w-full object-cover cursor-pointer"
                       />
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400">
@@ -249,12 +283,16 @@ export default function ScheduleCreatePage() {
                       {selectedVideo.title || "Tanpa judul"}
                     </div>
                     <div className="mt-1 text-xs text-slate-600">
-                      Diunggah {fmtDate(selectedVideo.createdAt)} • Durasi {fmtDuration(vDur)}
+                      Diunggah {fmtDate(selectedVideo.createdAt)} • Durasi{" "}
+                      {fmtDuration(vDur)}
                     </div>
                   </div>
 
                   <div className="flex gap-5">
-                    <HoverButton onClick={() => setPickerOpen(true)} className="px-3 py-1 text-sm cursor-pointer">
+                    <HoverButton
+                      onClick={() => setPickerOpen(true)}
+                      className="px-3 py-1 text-sm cursor-pointer"
+                    >
                       Ganti Video
                     </HoverButton>
                     <Button
@@ -400,7 +438,11 @@ export default function ScheduleCreatePage() {
 
             {/* Tombol Simpan: hanya di bawah */}
             <CardFooter className="flex items-center justify-end gap-2">
-              <Button variant="secondary" onClick={() => window.history.back()} className="w-32 h-10 lg:h-12 border border-black cursor-pointer">
+              <Button
+                variant="secondary"
+                onClick={() => window.history.back()}
+                className="w-32 h-10 lg:h-12 border border-black cursor-pointer"
+              >
                 Batal
               </Button>
               <HoverButton
@@ -412,7 +454,9 @@ export default function ScheduleCreatePage() {
                   !caption ||
                   !date ||
                   !time ||
-                  (date && time && new Date(`${date}T${time}:00`).getTime() < Date.now())
+                  (date &&
+                    time &&
+                    new Date(`${date}T${time}:00`).getTime() < Date.now())
                 }
                 className="w-32 cursor-pointer"
               >
@@ -423,7 +467,9 @@ export default function ScheduleCreatePage() {
         </div>
         {lateInfo && (
           <div className="mt-6 text-xs text-slate-600">
-            Late job/post id: <span className="font-mono">{lateInfo.postId}</span> ({lateInfo.mode})
+            Late job/post id:{" "}
+            <span className="font-mono">{lateInfo.postId}</span> (
+            {lateInfo.mode})
           </div>
         )}
         {upgradeRedirect && (
@@ -432,15 +478,21 @@ export default function ScheduleCreatePage() {
               <div className="flex items-start gap-4">
                 <div className="flex-1">
                   <div className="font-semibold">Limit reached</div>
-                  <div className="text-sm">Anda telah mencapai batas 3 schedule. Upgrade untuk akses unlimited.</div>
+                  <div className="text-sm">
+                    Anda telah mencapai batas 3 schedule. Upgrade untuk akses
+                    unlimited.
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={(e) => { e.preventDefault(); startInlineUpgrade(); }}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      startInlineUpgrade();
+                    }}
                     disabled={upgradeProcessing}
                     className="rounded-md bg-white px-3 py-1 text-sm font-medium text-red-600"
                   >
-                    {upgradeProcessing ? 'Memproses...' : 'Upgrade'}
+                    {upgradeProcessing ? "Memproses..." : "Upgrade"}
                   </button>
                   <button
                     onClick={() => setUpgradeRedirect(null)}
@@ -486,18 +538,12 @@ export default function ScheduleCreatePage() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {videos.map((v) => (
-                  <div
-                    key={v._id}
-                    className="overflow-hidden rounded-2xl border"
-                  >
-                    <div
-                      className="relative w-full bg-black/5"
-                      style={{ aspectRatio: "9 / 16" }}
-                    >
+                  <div key={v._id} className="overflow-hidden rounded-2xl">
+                    <div className="relative aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-xl bg-white cursor-pointer">
                       {v.secure_url ? (
                         <video
                           src={v.secure_url}
-                          className="absolute inset-0 h-full w-full object-cover"
+                          className="absolute inset-0 h-full w-full object-cover cursor-pointer"
                           muted
                         />
                       ) : (
@@ -519,7 +565,10 @@ export default function ScheduleCreatePage() {
                         {fmtDate(v.createdAt)}
                       </div>
                       <div className="mt-3 flex items-center justify-between">
-                        <HoverButton onClick={() => onPickVideo(v)} className="px-3 py-1 text-sm h-8 cursor-pointer">
+                        <HoverButton
+                          onClick={() => onPickVideo(v)}
+                          className="px-3 py-1 text-sm h-8 cursor-pointer"
+                        >
                           Pilih
                         </HoverButton>
                         {v._id === selectedVideo?._id && (

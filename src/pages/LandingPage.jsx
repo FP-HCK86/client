@@ -19,12 +19,24 @@ import selfie from "../assets/selfie.svg";
 import { Check, Sparkles, Star, Crown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { PointerHighlight } from "@/components/ui/pointer-highlight";
 
 const content = [
   {
     title: "Canvas Storyboard",
     description:
       "Planoria helps you transform scattered ideas into a clear visual storyboard. Instead of juggling messy notes or random drafts, you can map out campaigns in a structured, visual flow that makes your content strategy easy to understand and execute.",
+    descriptionNode: (
+      <p className="text-balance leading-relaxed">
+        Planoria helps you transform scattered ideas into a clear{" "}
+        <mark className="bg-[#e9d5ff] text-black px-1 rounded">
+          visual storyboard
+        </mark>
+        . Instead of juggling messy notes or random drafts, you can map out
+        campaigns in a structured, visual flow that makes your content strategy
+        easy to understand and execute.
+      </p>
+    ),
     content: (
       <div className="flex h-full w-full items-center justify-center text-white">
         <img
@@ -166,7 +178,12 @@ export function HowItWorks() {
 }
 
 // Helper: currency formatting
-const formatPrice = (price) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(price);
+const formatPrice = (price) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(price);
 
 const TIERS = [
   {
@@ -225,11 +242,15 @@ const TIERS = [
 function PricingTiers() {
   const [annual, setAnnual] = useState(true);
 
-  const tiers = useMemo(() => TIERS.map(t => ({
-    ...t,
-    price: annual ? t.yearly : t.monthly,
-    suffix: annual ? "/thn" : "/bln",
-  })), [annual]);
+  const tiers = useMemo(
+    () =>
+      TIERS.map((t) => ({
+        ...t,
+        price: annual ? t.yearly : t.monthly,
+        suffix: annual ? "/thn" : "/bln",
+      })),
+    [annual]
+  );
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-slate-50 to-white py-14 px-4">
@@ -245,16 +266,35 @@ function PricingTiers() {
             Paket Harga Sederhana
           </motion.h1>
           <p className="mt-3 text-slate-600 max-w-2xl mx-auto">
-            Pilih tier sesuai kebutuhanmu — bisa mulai gratis dan upgrade kapan saja.
+            Pilih tier sesuai kebutuhanmu — bisa mulai gratis dan upgrade kapan
+            saja.
           </p>
 
           {/* Billing toggle */}
           <div className="mt-6 inline-flex items-center gap-3 rounded-full bg-slate-100 px-4 py-2">
-            <span className={`text-sm ${annual ? "text-slate-500" : "text-slate-900 font-medium"}`}>Bulanan</span>
-            <Switch aria-label="Toggle penagihan tahunan" checked={annual} onCheckedChange={setAnnual} />
+            <span
+              className={`text-sm ${
+                annual ? "text-slate-500" : "text-slate-900 font-medium"
+              }`}
+            >
+              Bulanan
+            </span>
+            <Switch
+              aria-label="Toggle penagihan tahunan"
+              checked={annual}
+              onCheckedChange={setAnnual}
+            />
             <div className="flex items-center gap-2">
-              <span className={`text-sm ${annual ? "text-slate-900 font-medium" : "text-slate-500"}`}>Tahunan</span>
-              <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">Hemat hingga 25%</span>
+              <span
+                className={`text-sm ${
+                  annual ? "text-slate-900 font-medium" : "text-slate-500"
+                }`}
+              >
+                Tahunan
+              </span>
+              <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                Hemat hingga 25%
+              </span>
             </div>
           </div>
         </div>
@@ -268,7 +308,11 @@ function PricingTiers() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: idx * 0.06 }}
             >
-              <Card className={`relative h-full border-slate-200 ${tier.highlight ? "ring-2 ring-amber-400" : ""} rounded-2xl shadow-sm`}>                
+              <Card
+                className={`relative h-full border-slate-200 ${
+                  tier.highlight ? "ring-2 ring-amber-400" : ""
+                } rounded-2xl shadow-sm`}
+              >
                 {tier.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 text-xs px-3 py-1 shadow">
@@ -281,16 +325,22 @@ function PricingTiers() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <tier.icon className="w-5 h-5 text-slate-500" />
-                      <CardTitle className="text-xl font-semibold">{tier.name}</CardTitle>
+                      <CardTitle className="text-xl font-semibold">
+                        {tier.name}
+                      </CardTitle>
                     </div>
                   </div>
                   <p className="mt-1 text-sm text-slate-500">{tier.tagline}</p>
 
                   {/* Price */}
                   <div className="mt-4 flex items-end gap-1">
-                    <span className="text-4xl font-bold tracking-tight">{tier.price === 0 ? "Gratis" : formatPrice(tier.price)}</span>
+                    <span className="text-4xl font-bold tracking-tight">
+                      {tier.price === 0 ? "Gratis" : formatPrice(tier.price)}
+                    </span>
                     {tier.price !== 0 && (
-                      <span className="text-sm text-slate-500 mb-2">{tier.suffix}</span>
+                      <span className="text-sm text-slate-500 mb-2">
+                        {tier.suffix}
+                      </span>
                     )}
                   </div>
                 </CardHeader>
@@ -306,10 +356,16 @@ function PricingTiers() {
                   </ul>
 
                   <div className="mt-auto">
-                    <Button className={`w-full rounded-xl ${tier.highlight ? "bg-amber-500 hover:bg-amber-600" : ""}`}>
+                    <Button
+                      className={`w-full rounded-xl ${
+                        tier.highlight ? "bg-amber-500 hover:bg-amber-600" : ""
+                      }`}
+                    >
                       {tier.cta}
                     </Button>
-                    <p className="mt-3 text-xs text-slate-500 text-center">Tidak perlu kartu kredit</p>
+                    <p className="mt-3 text-xs text-slate-500 text-center">
+                      Tidak perlu kartu kredit
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -319,7 +375,8 @@ function PricingTiers() {
 
         {/* Tiny FAQ / footnote */}
         <div className="max-w-3xl mx-auto text-center mt-12 text-sm text-slate-500">
-          Harga dalam USD untuk contoh. Sesuaikan label, mata uang, dan fitur sesuai produkmu.
+          Harga dalam USD untuk contoh. Sesuaikan label, mata uang, dan fitur
+          sesuai produkmu.
         </div>
       </div>
     </div>
@@ -490,8 +547,10 @@ export default function HeroSection() {
           {/* Left column */}
           <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
-              Turn Ideas Into Impactful Stories with Planoria
-              <span className="align-super">^</span>
+              <PointerHighlight>
+                Turn Ideas Into Impactful Stories with Planoria
+                <span className="align-super">^</span>
+              </PointerHighlight>
             </h1>
 
             <div className="mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -586,7 +645,7 @@ export default function HeroSection() {
       </section>
       <Features />
       <HowItWorks />
-      <PricingTiers/>
+      <PricingTiers />
       <FooterSection />
     </>
   );
