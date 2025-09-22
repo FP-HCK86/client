@@ -20,6 +20,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import api from "../api/client";
 
 export default function ScheduleCreatePage() {
@@ -35,9 +36,9 @@ export default function ScheduleCreatePage() {
   const [cover_time, setCover_time] = useState(0); // in seconds
 
   const [submitting, setSubmitting] = useState(false);
-  const [msg, setMsg] = useState("");
   const [lateInfo, setLateInfo] = useState(null); // store late post/job id
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   // Fetch video user
   useEffect(() => {
@@ -49,7 +50,12 @@ export default function ScheduleCreatePage() {
         setVideos(Array.isArray(data?.items) ? data.items : []);
       } catch (e) {
         if (!mounted) return;
-        setMsg(e?.response?.data?.error || "Gagal memuat Video Library.");
+        toast({
+          title: "Error",
+          description: e?.response?.data?.error || "Gagal memuat Video Library.",
+          variant: "destructive",
+          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -57,7 +63,7 @@ export default function ScheduleCreatePage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [toast]);
 
   // Saat pilih video → isi caption/hashtags dari DB
   const onPickVideo = (v) => {
@@ -88,7 +94,6 @@ export default function ScheduleCreatePage() {
   async function onSubmit() {
     try {
       setSubmitting(true);
-      setMsg("");
       const video_id = selectedVideo?._id || selectedVideo?.id;
       const scheduled_at = toUtcIsoFromLocalWIB(date, time);
 
@@ -102,7 +107,12 @@ export default function ScheduleCreatePage() {
       };
 
       const { data } = await api.post("/schedules", body);
-      setMsg(`✔ ${data?.message || "Schedule created"}`);
+      toast({
+        title: "Success!",
+        description: `✔ ${data?.message || "Schedule created"}`,
+        variant: "default",
+        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+      });
       if (data?.late?.postId) {
         setLateInfo({ postId: data.late.postId, mode: data.late.mode });
       } else if (data?.schedule?.vendor_job_id) {
@@ -112,7 +122,12 @@ export default function ScheduleCreatePage() {
       }
       // window.location.href = `/schedule/${data?.schedule?._id}`;
     } catch (e) {
-      setMsg(e?.response?.data?.error || "Gagal membuat schedule");
+      toast({
+        title: "Error",
+        description: e?.response?.data?.error || "Gagal membuat schedule",
+        variant: "destructive",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -133,8 +148,6 @@ export default function ScheduleCreatePage() {
             Buat jadwal posting baru dari Video Library.
           </p>
         </div>
-
-        {msg && <div className="mb-3 text-sm text-slate-700">{msg}</div>}
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Kolom kiri: pilih + preview video */}

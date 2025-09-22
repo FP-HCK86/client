@@ -9,6 +9,7 @@ import {
   CardContent,
   CardFooter,
 } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 import api from "../api/client";
 
 export default function VideoUploadPage() {
@@ -19,28 +20,36 @@ export default function VideoUploadPage() {
   const [hashtags, setHashtags] = useState("");
 
   const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState("");
+  const { toast } = useToast();
 
   function onPickFile(e) {
     const f = e.target.files?.[0];
     setFile(f || null);
     setPreviewUrl(f ? URL.createObjectURL(f) : "");
-    setMessage("");
   }
 
   async function onSave() {
     if (!file) {
-      setMessage("Pilih file video.");
+      toast({
+        title: "Error",
+        description: "Pilih file video.",
+        variant: "destructive",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
       return;
     }
     if (!caption) {
-      setMessage("Caption wajib diisi.");
+      toast({
+        title: "Error",
+        description: "Caption wajib diisi.",
+        variant: "destructive",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
       return;
     }
 
     try {
       setUploading(true);
-      setMessage("");
 
       const form = new FormData();
       form.append("file", file); // field: "file" (multer)
@@ -52,11 +61,21 @@ export default function VideoUploadPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setMessage(`✔ Sukses upload. ID: ${data?.video?._id || "-"}`);
+      toast({
+        title: "Success!",
+        description: `✔ Sukses upload. ID: ${data?.video?._id || "-"}`,
+        variant: "default",
+        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+      });
       // Opsional: redirect ke library
       // navigate(`/videos`);
     } catch (e) {
-      setMessage(e?.response?.data?.error || "Upload gagal.");
+      toast({
+        title: "Upload Failed",
+        description: e?.response?.data?.error || "Upload gagal.",
+        variant: "destructive",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
     } finally {
       setUploading(false);
     }
@@ -145,8 +164,7 @@ export default function VideoUploadPage() {
                 />
               </div>
             </CardContent>
-            <CardFooter className="flex items-center justify-between">
-              <div className="text-xs text-slate-600">{message}</div>
+            <CardFooter className="flex items-center justify-end">
               <Button
                 onClick={onSave}
                 disabled={!file || !caption || uploading}

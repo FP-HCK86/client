@@ -18,13 +18,27 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import api from "../api/client";
 
 const MAX_FILE_MB = 1024; // 1 GB
 
 export default function CanvasPage() {
+  const { toast } = useToast();
   const [canvasMode, setCanvasMode] = useState("create"); // 'create' or 'discuss'
+  const [deletingChat, setDeletingChat] = useState(null); // Track which chat is being deleted
   const [chatMessages, setChatMessages] = useState([
     {
       role: "assistant",
@@ -229,6 +243,7 @@ export default function CanvasPage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log(data, "<<<Persona activated, CanvasPage");
         const updatedPersona = { ...persona, isActive: true };
         
         // Update personas list
@@ -642,6 +657,39 @@ export default function CanvasPage() {
     fetchPersonas();
   };
 
+
+  const handleDeleteChat = (sessionId) => {
+    try {
+      setDeletingChat(sessionId);
+      const updatedSessions = chatSessions.filter(session => session.id !== sessionId);
+      setChatSessions(updatedSessions);
+      localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
+      
+      // If we're deleting the current chat, start a new one
+      if (currentChatId === sessionId) {
+        handleNewChat();
+      }
+      
+      toast({
+        title: "Chat Berhasil Dihapus",
+        description: "Chat telah berhasil dihapus dari riwayat",
+        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+      });
+      
+      // Give user time to see the success toast
+      setTimeout(() => {
+        setDeletingChat(null);
+      }, 2000);
+      
+    } catch (error) {
+      console.log(error, "<<<Error deleting chat session");
+      toast({
+        title: "Gagal Menghapus Chat",
+        description: "Terjadi kesalahan saat menghapus chat",
+        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+      });
+      setDeletingChat(null);
+=======
   const handleDeleteChat = async (sessionId) => {
     try {
       const token = localStorage.getItem('authToken');
@@ -672,6 +720,7 @@ export default function CanvasPage() {
       }
     } catch (error) {
       console.error('Error deleting chat session:', error);
+
     }
   };
 
@@ -794,18 +843,41 @@ export default function CanvasPage() {
                                     {session.persona && ` ${session.persona.name}`}
                                   </div>
                                 </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteChat(session.id);
-                                  }}
-                                  className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                                  title="Hapus chat"
-                                >
-                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <button
+                                      className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                      title="Hapus chat"
+                                      disabled={deletingChat === session.id}
+                                    >
+                                      {deletingChat === session.id ? (
+                                        <div className="animate-spin h-3 w-3 border-2 border-red-500 rounded-full border-t-transparent" />
+                                      ) : (
+                                        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                      )}
+                                    </button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Hapus Chat</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Apakah Anda yakin ingin menghapus chat "{session.title}"? 
+                                        Tindakan ini tidak dapat dibatalkan.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                                      <AlertDialogAction 
+                                        onClick={() => handleDeleteChat(session.id)}
+                                        className="bg-red-600 hover:bg-red-700"
+                                      >
+                                        Hapus
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
                               </div>
                             ))}
                           </div>
@@ -1142,7 +1214,7 @@ export default function CanvasPage() {
                                 if (line.startsWith('## ')) {
                                   return (
                                     <h3 key={index} className="text-lg font-bold text-gray-800 mt-4 mb-2 border-b pb-1">
-                                      {line.replace('## ', '').replace(/[\*\#]/g, '')}
+                                      {line.replace('## ', '').replace(/[*#]/g, '')}
                                     </h3>
                                   );
                                 }
@@ -1150,7 +1222,7 @@ export default function CanvasPage() {
                                 if (line.startsWith('### ')) {
                                   return (
                                     <h4 key={index} className="text-base font-semibold text-gray-700 mt-3 mb-1">
-                                      {line.replace('### ', '').replace(/[\*\#]/g, '')}
+                                      {line.replace('### ', '').replace(/[*#]/g, '')}
                                     </h4>
                                   );
                                 }

@@ -9,9 +9,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import axios from "axios";
 import { useAuth } from "@/hooks/useAuth";
-import { startOfDay, addDays, sameDay, startOfWeekMonday } from "@/lib/dateHelpers";
+// import { startOfDay, addDays, sameDay, startOfWeekMonday } from "@/lib/dateHelpers";
+import { addDays, sameDay } from "@/lib/dateHelpers";
 import { getMonthMatrix, getWeekRange } from "@/lib/calendarMatrix";
 import { getEventsOnDate } from "@/lib/eventHelpers";
 import { formatDateHead, formatDayNum, formatWeekdayShort, formatTime } from "@/lib/formatters";
@@ -27,28 +29,32 @@ export default function ScheduleCalendarPage({
   const { currentDate, setCurrentDate, selectedDate, setSelectedDate, gotoToday, gotoPrev, gotoNext } = useCalendarNavigation();
   const [schedules, setSchedules] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Fetch schedules based on current view and date
   useEffect(() => {
     const fetchSchedules = async () => {
       if (!user) return;
       setLoading(true);
-      setError(null);
       try {
         const response = await axios.get("/schedules");
         setSchedules(response.data.schedules || []);
       } catch (err) {
-        setError(err.message || "Failed to fetch schedules");
+        toast({
+          title: "Error",
+          description: err.message || "Failed to fetch schedules",
+          variant: "destructive",
+          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        });
         console.error("Error fetching schedules:", err);
       } finally {
         setLoading(false);
       }
     };
     fetchSchedules();
-  }, [user]); // Fetch once on mount, or when user changes
+  }, [user, toast]); // Fetch once on mount, or when user changes
 
   const events = useMemo(() => {
     return schedules
@@ -113,9 +119,6 @@ export default function ScheduleCalendarPage({
           <CardContent className="p-4">
             {loading && (
               <div className="text-center py-4">Loading schedules...</div>
-            )}
-            {error && (
-              <div className="text-center py-4 text-red-500">{error}</div>
             )}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
