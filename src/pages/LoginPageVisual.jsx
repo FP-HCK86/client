@@ -10,6 +10,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import HoverButton from "@/components/ui/HoverButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, AlertCircle, Mail, Lock, Eye, EyeOff } from "lucide-react";
