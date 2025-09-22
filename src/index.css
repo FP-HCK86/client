@@ -129,6 +129,18 @@
   body {
     @apply bg-background text-foreground;
   }
+  /* Global cursor behaviors for interactive elements */
+  button:not(:disabled),
+  [role=button]:not(:disabled),
+  a.button-like,
+  span[data-slot=badge][role=button] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role=button][aria-disabled=true],
+  button[disabled] {
+    cursor: not-allowed;
+  }
   /* Utility class to apply Planoria background color */
   .bg-planoria {
     background-color: var(--bg-planoria);
@@ -146,6 +158,18 @@
     background-color: var(--btn-orange);
     border: 1px solid var(--btn-border);
   }
+  /* Non-bordered color utilities for badges/status (no black border) */
+  .btn-green {
+    background-color: var(--btn-green) !important;
+    color: #000000 !important; /* black text per request */
+  }
+  .btn-orange {
+    background-color: var(--btn-orange) !important;
+    color: #000000 !important; /* black text per request */
+  }
+  /* Specificity boost for Badge component span */
+  span[data-slot=badge].btn-green { background-color: var(--btn-green) !important; }
+  span[data-slot=badge].btn-orange { background-color: var(--btn-orange) !important; }
   /* Default single button class: purple background + black border */
   .btn-default {
     background-color: var(--btn-purple) !important;

@@ -7,6 +7,7 @@ export default function HoverButton({
   type = "button",
   className = "",
   disabled = false,
+  fullWidth = false,
   children,
 }) {
   // choose element: anchor when href provided, otherwise button
@@ -21,11 +22,13 @@ export default function HoverButton({
   // disabled behavior for non-anchor: pass disabled attribute
   if (!isAnchor && disabled) elementProps.disabled = true;
 
+  const wantsFull = fullWidth || /(^|\s)w-full(\s|$)/.test(className);
+
   return (
     <div
-      className={`relative inline-block group ${
-        disabled ? "opacity-60 pointer-events-none" : ""
-      }`}
+      className={`relative group ${
+        wantsFull ? "block w-full" : "inline-block"
+      } ${disabled ? "opacity-60 pointer-events-none" : ""}`}
     >
       {/* Layer atas – hijau pastel (tokenized). We use a scale so the top layer
           remains slightly inset relative to the main button; controlled via
@@ -45,7 +48,9 @@ export default function HoverButton({
 
       <Component
         {...elementProps}
-        className={`relative inline-flex items-center justify-center border border-black rounded text-slate-900 no-underline transition-all duration-150 z-[3] group-hover:-translate-x-2 group-hover:-translate-y-2 w-full lg:w-auto h-10 px-6 text-lg lg:h-12 lg:px-6 lg:text-lg ${className}`}
+        className={`relative inline-flex items-center justify-center border border-black rounded text-slate-900 no-underline transition-all duration-150 z-[3] group-hover:-translate-x-2 group-hover:-translate-y-2 ${
+          wantsFull ? "w-full" : "w-full lg:w-auto"
+        } h-10 px-6 text-lg lg:h-12 lg:px-6 lg:text-lg ${className}`}
         style={{ backgroundColor: "var(--hover-btn-purple)" }}
         aria-disabled={disabled}
         onClick={isAnchor && disabled ? (e) => e.preventDefault() : onClick}
