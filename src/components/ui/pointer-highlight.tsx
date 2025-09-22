@@ -1,45 +1,69 @@
 "use client";
+
 import { cn } from "@/lib/utils";
 import { motion } from "motion/react";
 import { useRef, useEffect, useState } from "react";
+
+type PointerHighlightProps = {
+  children: React.ReactNode;
+  rectangleClassName?: string;
+  pointerClassName?: string;
+  containerClassName?: string;
+  /**
+   * Durasi 1 siklus animasi (detik)
+   * default: 1.2
+   */
+  duration?: number;
+  /**
+   * Jeda antar pengulangan animasi (detik)
+   * default: 0
+   */
+  repeatDelay?: number;
+  /**
+   * Jika true, pointer bergerak bolak-balik (reverse).
+   * Jika false, pointer kembali ke awal tanpa reverse.
+   * default: true
+   */
+  pingPong?: boolean;
+  /**
+   * Margin ekstra pergerakan pointer dari sudut kanan-bawah.
+   * default: 4
+   */
+  pointerOffset?: number;
+};
 
 export function PointerHighlight({
   children,
   rectangleClassName,
   pointerClassName,
   containerClassName,
-}: {
-  children: React.ReactNode;
-  rectangleClassName?: string;
-  pointerClassName?: string;
-  containerClassName?: string;
-}) {
+  duration = 1.2,
+  repeatDelay = 0,
+  pingPong = true,
+  pointerOffset = 4,
+}: PointerHighlightProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    if (containerRef.current) {
-      const { width, height } = containerRef.current.getBoundingClientRect();
+    if (!containerRef.current) return;
+
+    const update = () => {
+      const { width, height } = containerRef.current!.getBoundingClientRect();
       setDimensions({ width, height });
-    }
+    };
 
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        setDimensions({ width, height });
-      }
-    });
+    update();
 
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current);
-    }
+    const resizeObserver = new ResizeObserver(() => update());
+    resizeObserver.observe(containerRef.current);
 
     return () => {
-      if (containerRef.current) {
-        resizeObserver.unobserve(containerRef.current);
-      }
+      resizeObserver.disconnect();
     };
   }, []);
+
+  const ready = dimensions.width > 0 && dimensions.height > 0;
 
   return (
     <div
@@ -47,46 +71,53 @@ export function PointerHighlight({
       ref={containerRef}
     >
       {children}
-      {dimensions.width > 0 && dimensions.height > 0 && (
+
+      {ready && (
         <motion.div
           className="pointer-events-none absolute inset-0 z-0"
-          initial={{ opacity: 0, scale: 0.95, originX: 0, originY: 0 }}
+          initial={{ opacity: 0, scale: 0.98, originX: 0, originY: 0 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
         >
+          {/* Rectangle border: animasi pakai scaleX & scaleY (GPU-friendly) */}
           <motion.div
             className={cn(
               "absolute inset-0 border border-neutral-800 dark:border-neutral-200",
-              rectangleClassName,
+              rectangleClassName
             )}
-            initial={{
-              width: 0,
-              height: 0,
-            }}
-            whileInView={{
+            style={{
               width: dimensions.width,
               height: dimensions.height,
+              transformOrigin: "top left",
             }}
+            initial={{ scaleX: 0, scaleY: 0 }}
+            animate={{ scaleX: [0, 1], scaleY: [0, 1] }}
             transition={{
-              duration: 1,
+              duration,
               ease: "easeInOut",
+              repeat: Infinity,
+              repeatType: pingPong ? "reverse" : "loop",
+              repeatDelay,
             }}
           />
+
+          {/* Pointer: bergerak dari (0,0) ke (w+offset, h+offset) */}
           <motion.div
             className="pointer-events-none absolute"
-            initial={{ opacity: 0 }}
-            whileInView={{
+            initial={{ opacity: 0, x: 0, y: 0 }}
+            animate={{
               opacity: 1,
-              x: dimensions.width + 4,
-              y: dimensions.height + 4,
+              x: [0, dimensions.width + pointerOffset],
+              y: [0, dimensions.height + pointerOffset],
             }}
-            style={{
-              rotate: -90,
-            }}
+            style={{ rotate: -90 }}
             transition={{
-              opacity: { duration: 0.1, ease: "easeInOut" },
-              duration: 1,
+              opacity: { duration: 0.12, ease: "easeInOut" },
+              duration,
               ease: "easeInOut",
+              repeat: Infinity,
+              repeatType: pingPong ? "reverse" : "loop",
+              repeatDelay,
             }}
           >
             <Pointer

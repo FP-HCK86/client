@@ -11,6 +11,7 @@ export const StickyScroll = ({
   content: {
     title: string;
     description: string;
+    descriptionNode?: React.ReactNode;
     content?: React.ReactNode | any;
   }[];
   contentClassName?: string;
@@ -35,7 +36,7 @@ export const StickyScroll = ({
         }
         return acc;
       },
-      0,
+      0
     );
     setActiveCard(closestBreakpointIndex);
   });
@@ -52,7 +53,7 @@ export const StickyScroll = ({
   ];
 
   const [backgroundGradient, setBackgroundGradient] = useState(
-    linearGradients[0],
+    linearGradients[0]
   );
 
   useEffect(() => {
@@ -91,7 +92,7 @@ export const StickyScroll = ({
                 }}
                 className="text-kg mt-10 max-w-sm text-black"
               >
-                {item.description}
+                {item.descriptionNode ?? item.description}
               </motion.p>
             </div>
           ))}
@@ -102,7 +103,7 @@ export const StickyScroll = ({
         style={{ background: backgroundGradient }}
         className={cn(
           "sticky top-10 hidden h-60 w-80 overflow-hidden rounded-md bg-white lg:block",
-          contentClassName,
+          contentClassName
         )}
       >
         {content[activeCard].content ?? null}
