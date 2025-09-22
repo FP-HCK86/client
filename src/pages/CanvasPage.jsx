@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ReactMarkdown from "react-markdown";
 import {
   UploadCloud,
   Film,
@@ -7,7 +8,11 @@ import {
   Lightbulb,
   Video,
   Send,
+  Trash2,
 } from "lucide-react";
+import { useNavigate } from "react-router";
+import { toast } from "react-hot-toast";
+import AnalysisProgressModal from "@/components/AnalysisProgressModalFixed";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,27 +23,14 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import api from "../api/client";
 
 const MAX_FILE_MB = 1024; // 1 GB
 
 export default function CanvasPage() {
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const [canvasMode, setCanvasMode] = useState("create"); // 'create' or 'discuss'
-  const [deletingChat, setDeletingChat] = useState(null); // Track which chat is being deleted
   const [chatMessages, setChatMessages] = useState([
     {
       role: "assistant",
@@ -46,6 +38,10 @@ export default function CanvasPage() {
     }
   ]);
   const [currentMessage, setCurrentMessage] = useState("");
+  const [videoChatInput, setVideoChatInput] = useState("");
+  const [videoChatMessages, setVideoChatMessages] = useState([]);
+  const [isVideoChatLoading, setIsVideoChatLoading] = useState(false);
+  const chatContainerRef = React.useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [generatedContent, setGeneratedContent] = useState(null);
   const [personas, setPersonas] = useState([]);
@@ -80,6 +76,213 @@ export default function CanvasPage() {
   const [videos, setVideos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [loadingVideos, setLoadingVideos] = useState(false);
+  
+  // Progress modal states
+  const [showAnalysisProgress, setShowAnalysisProgress] = useState(false);
+  const [analysisVideo, setAnalysisVideo] = useState(null);
+
+  // Handle authentication errors
+  const handleAuthError = () => {
+    localStorage.removeItem('authToken');
+    toast.error('Your session has expired. Please login again.');
+    navigate('/login');
+  };
+
+  // Start video analysis for selected video
+  const startVideoAnalysis = async (video) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        toast.error('Please login to access video analysis features.');
+        navigate('/login');
+        return;
+      }
+
+      // Show loading toast
+      toast.loading('Starting video analysis...', { id: 'video-analysis' });
+
+      const response = await fetch(`http://localhost:3000/videos/${video._id}/analyze`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Analysis response:', data);
+        
+        // Handle different analysis states
+        if (data.status === 'processing' && data.message === 'Analysis already in progress') {
+          toast.success('Analisis video sedang berjalan. Menampilkan progress...', { 
+            id: 'video-analysis',
+            duration: 3000
+          });
+          
+          // Show progress modal for already running analysis
+          setAnalysisVideo(video);
+          setShowAnalysisProgress(true);
+          
+        } else if (data.status === 'processing' && data.message === 'Video analysis started') {
+          toast.success('Video analysis started successfully!', { id: 'video-analysis' });
+          
+          // Show progress modal for newly started analysis
+          setAnalysisVideo(video);
+          setShowAnalysisProgress(true);
+        }
+        
+      } else if (response.status === 401) {
+        handleAuthError();
+        return;
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to start video analysis', { id: 'video-analysis' });
+      }
+    } catch (error) {
+      console.error('Error starting video analysis:', error);
+      toast.error('Network error occurred while starting analysis', { id: 'video-analysis' });
+    }
+  };
+
+  // Send video chat message
+  const sendVideoChatMessage = async () => {
+    if (!videoChatInput.trim() || !selectedVideo || !selectedVideo.hasAIAnalysis) return;
+
+    const userMessage = {
+      id: Date.now(),
+      text: videoChatInput,
+      sender: 'user',
+      timestamp: new Date()
+    };
+
+    setVideoChatMessages(prev => [...prev, userMessage]);
+    setVideoChatInput('');
+    setIsVideoChatLoading(true);
+
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:3000/videos/${selectedVideo._id}/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          message: videoChatInput,
+          context: {
+            transcript: selectedVideo.aiAnalysis?.transcript,
+            analysis: selectedVideo.aiAnalysis?.analysis,
+            suggestions: selectedVideo.aiAnalysis?.suggestions
+          }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const aiMessage = {
+          id: Date.now() + 1,
+          text: data.response,
+          sender: 'ai',
+          timestamp: new Date()
+        };
+        setVideoChatMessages(prev => [...prev, aiMessage]);
+      } else {
+        throw new Error('Failed to get AI response');
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        text: 'Maaf, terjadi kesalahan saat menghubungi AI. Silakan coba lagi.',
+        sender: 'ai',
+        timestamp: new Date()
+      };
+      setVideoChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsVideoChatLoading(false);
+    }
+  };
+
+  const handleVideoChatKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendVideoChatMessage();
+    }
+  };
+
+  // Delete video analysis
+  const deleteVideoAnalysis = async (video) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        toast.error('Please login to access this feature.');
+        navigate('/login');
+        return;
+      }
+
+      // Show confirmation
+      if (!window.confirm('Apakah Anda yakin ingin menghapus analisis AI untuk video ini?')) {
+        return;
+      }
+
+      toast.loading('Menghapus analisis AI...', { id: 'delete-analysis' });
+
+      const response = await fetch(`http://localhost:3000/videos/${video._id}/analysis`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Analisis AI berhasil dihapus!', { id: 'delete-analysis' });
+        
+        // Update video in state
+        const updatedVideo = {
+          ...video,
+          hasAIAnalysis: false,
+          transcript: null,
+          transcript_status: null,
+          aiAnalysis: null,
+          aiSuggestions: null
+        };
+
+        // Update selected video
+        setSelectedVideo(updatedVideo);
+
+        // Update videos list
+        setVideos(prevVideos => 
+          prevVideos.map(v => 
+            v._id === video._id ? updatedVideo : v
+          )
+        );
+
+        // Clear chat messages
+        setVideoChatMessages([]);
+        
+      } else if (response.status === 401) {
+        handleAuthError();
+        return;
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Gagal menghapus analisis AI', { id: 'delete-analysis' });
+      }
+    } catch (error) {
+      console.error('Error deleting video analysis:', error);
+      toast.error('Network error occurred while deleting analysis', { id: 'delete-analysis' });
+    }
+  };
+
+  // Auto-scroll chat to bottom when new messages arrive
+  React.useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [videoChatMessages, isVideoChatLoading]);
 
   // Fetch personas and load chat history on component mount
   React.useEffect(() => {
@@ -191,6 +394,10 @@ export default function CanvasPage() {
         const data = await response.json();
         console.log("Personas from MongoDB:", data.data.personas);
         setPersonas(data.data.personas);
+      } else if (response.status === 401) {
+        console.error("Authentication failed - redirecting to login");
+        handleAuthError();
+        return;
       } else {
         console.error("Failed to fetch personas:", response.status, response.statusText);
         setPersonas([]); // Clear personas if fetch fails
@@ -243,7 +450,6 @@ export default function CanvasPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log(data, "<<<Persona activated, CanvasPage");
         const updatedPersona = { ...persona, isActive: true };
         
         // Update personas list
@@ -352,7 +558,12 @@ export default function CanvasPage() {
             content: `Persona "${newPersona.name}" berhasil dibuat! Sekarang ceritakan ide konten video apa yang ingin Anda buat dengan persona ini?`
           }
         ]);
+      } else if (response.status === 401) {
+        handleAuthError();
+        return;
       } else {
+        const errorData = await response.json().catch(() => null);
+        console.error("Error creating persona:", errorData);
         throw new Error("Failed to create persona");
       }
     } catch (error) {
@@ -659,35 +870,12 @@ export default function CanvasPage() {
 
   const handleDeleteChat = async (sessionId) => {
     try {
-      setDeletingChat(sessionId);
-      
       const token = localStorage.getItem('authToken');
       if (!token) {
         console.error('No auth token found');
-        // If no token, fall back to local-only deletion
-        const updatedSessions = chatSessions.filter(session => session.id !== sessionId);
-        setChatSessions(updatedSessions);
-        localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
-        
-        // If we're deleting the current chat, start a new one
-        if (currentChatId === sessionId) {
-          handleNewChat();
-        }
-        
-        toast({
-          title: "Chat Berhasil Dihapus",
-          description: "Chat telah berhasil dihapus dari riwayat",
-          className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
-        });
-        
-        // Give user time to see the success toast
-        setTimeout(() => {
-          setDeletingChat(null);
-        }, 2000);
         return;
       }
 
-      // Try to delete from server first
       const response = await fetch(`http://localhost:3000/chat-sessions/${sessionId}`, {
         method: 'DELETE',
         headers: {
@@ -697,43 +885,19 @@ export default function CanvasPage() {
       });
 
       if (response.ok) {
-        // Update local state after successful server deletion
-        const updatedSessions = chatSessions.filter(session => session._id !== sessionId && session.id !== sessionId);
+        // Update local state
+        const updatedSessions = chatSessions.filter(session => session._id !== sessionId);
         setChatSessions(updatedSessions);
-        localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
         
         // If we're deleting the current chat, start a new one
         if (currentChatId === sessionId) {
           handleNewChat();
         }
-        
-        toast({
-          title: "Chat Berhasil Dihapus",
-          description: "Chat telah berhasil dihapus dari riwayat",
-          className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
-        });
-        
-        // Give user time to see the success toast
-        setTimeout(() => {
-          setDeletingChat(null);
-        }, 2000);
       } else {
         console.error('Failed to delete chat session:', response.status);
-        toast({
-          title: "Gagal Menghapus Chat",
-          description: "Terjadi kesalahan saat menghapus chat dari server",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-        });
-        setDeletingChat(null);
       }
     } catch (error) {
       console.error('Error deleting chat session:', error);
-      toast({
-        title: "Gagal Menghapus Chat",
-        description: "Terjadi kesalahan saat menghapus chat",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-      });
-      setDeletingChat(null);
     }
   };
 
@@ -856,41 +1020,18 @@ export default function CanvasPage() {
                                     {session.persona && ` ${session.persona.name}`}
                                   </div>
                                 </button>
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <button
-                                      className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
-                                      title="Hapus chat"
-                                      disabled={deletingChat === session.id}
-                                    >
-                                      {deletingChat === session.id ? (
-                                        <div className="animate-spin h-3 w-3 border-2 border-red-500 rounded-full border-t-transparent" />
-                                      ) : (
-                                        <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                      )}
-                                    </button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Hapus Chat</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Apakah Anda yakin ingin menghapus chat "{session.title}"? 
-                                        Tindakan ini tidak dapat dibatalkan.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Batal</AlertDialogCancel>
-                                      <AlertDialogAction 
-                                        onClick={() => handleDeleteChat(session.id)}
-                                        className="bg-red-600 hover:bg-red-700"
-                                      >
-                                        Hapus
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteChat(session.id);
+                                  }}
+                                  className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
+                                  title="Hapus chat"
+                                >
+                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -1227,7 +1368,7 @@ export default function CanvasPage() {
                                 if (line.startsWith('## ')) {
                                   return (
                                     <h3 key={index} className="text-lg font-bold text-gray-800 mt-4 mb-2 border-b pb-1">
-                                      {line.replace('## ', '').replace(/[*#]/g, '')}
+                                      {line.replace('## ', '').replace(/[\*\#]/g, '')}
                                     </h3>
                                   );
                                 }
@@ -1235,7 +1376,7 @@ export default function CanvasPage() {
                                 if (line.startsWith('### ')) {
                                   return (
                                     <h4 key={index} className="text-base font-semibold text-gray-700 mt-3 mb-1">
-                                      {line.replace('### ', '').replace(/[*#]/g, '')}
+                                      {line.replace('### ', '').replace(/[\*\#]/g, '')}
                                     </h4>
                                   );
                                 }
@@ -1635,31 +1776,177 @@ export default function CanvasPage() {
                       </div>
                     )}
 
-                    {/* Chat dengan AI tentang video */}
+                    {/* Video Analysis Section */}
                     <div className="mt-6">
-                      <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
-                        <Video className="h-4 w-4" />
-                        <span className="font-medium">Chat tentang Video</span>
-                      </div>
-                      <div className="h-[200px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3">
-                        <div className="text-sm text-slate-600">
-                          <div className="mb-4 p-3 bg-white rounded-lg shadow-sm">
-                            <strong>AI:</strong> {selectedVideo 
-                              ? `Video "${selectedVideo.title || 'tanpa judul'}" sudah dipilih. Saat ini saya hanya bisa melihat metadata video (judul, caption, hashtags). Untuk analisis lengkap video, fitur ini akan dikembangkan di masa depan.`
-                              : "Pilih video terlebih dahulu. Saat ini saya hanya bisa melihat metadata video seperti judul, caption, dan hashtags."
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                          <Video className="h-4 w-4" />
+                          <span className="font-medium">Analisis Video dengan AI</span>
+                        </div>
+                        <Button 
+                          onClick={() => {
+                            if (selectedVideo) {
+                              // Langsung mulai analisis video yang sudah dipilih
+                              startVideoAnalysis(selectedVideo);
                             }
-                          </div>
+                            // Jika belum ada video dipilih, tombol tidak melakukan apa-apa (disabled)
+                          }}
+                          disabled={!selectedVideo}
+                          className={selectedVideo 
+                            ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                            : "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300"
+                          }
+                          size="sm"
+                        >
+                          <Sparkles className={`mr-1 h-3 w-3 ${selectedVideo ? 'text-white' : 'text-gray-400'}`} />
+                          Start Analysis
+                        </Button>
+                        
+                        {/* Tombol Hapus Analisis AI */}
+                        {selectedVideo && selectedVideo.hasAIAnalysis && (
+                          <Button
+                            onClick={() => deleteVideoAnalysis(selectedVideo)}
+                            variant="outline"
+                            size="sm"
+                            className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" />
+                            Hapus Analisis
+                          </Button>
+                        )}
+                      </div>
+                      <div ref={chatContainerRef} className="h-[200px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3">
+                        <div className="text-sm text-slate-600">
+                          {/* Initial AI Message */}
+                          {videoChatMessages.length === 0 && (
+                            <>
+                              <div className="mb-4 p-3 bg-white rounded-lg shadow-sm">
+                                <strong>AI:</strong> {selectedVideo 
+                                  ? selectedVideo.hasAIAnalysis 
+                                    ? `Video "${selectedVideo.title || 'tanpa judul'}" sudah dianalisis! Saya menemukan ${selectedVideo.aiSuggestions?.improvements?.length || 0} saran perbaikan. Tanya saya tentang konten video, transkrip, atau saran perbaikan yang spesifik.`
+                                    : selectedVideo.transcript_status === 'completed'
+                                    ? `Video "${selectedVideo.title || 'tanpa judul'}" sudah memiliki transkrip. Klik "Start Analysis" untuk mendapatkan analisis AI dan saran perbaikan.`
+                                    : `Video "${selectedVideo.title || 'tanpa judul'}" sudah dipilih. Klik tombol "Start Analysis" untuk memulai ekstraksi transkrip video menggunakan AI. Setelah selesai, Anda bisa chat dengan saya tentang konten video tersebut.`
+                                  : "Pilih video terlebih dahulu dari daftar di atas. Tombol 'Start Analysis' sudah tersedia di atas, tapi akan aktif setelah Anda memilih video."
+                                }
+                              </div>
+                              
+                              {/* Show AI Analysis Summary in Chat */}
+                              {selectedVideo && selectedVideo.hasAIAnalysis && selectedVideo.aiAnalysis && (
+                                <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                                  <strong className="text-blue-800">Ringkasan Analisis:</strong>
+                                  <p className="text-blue-700 text-xs mt-1">{selectedVideo.aiAnalysis}</p>
+                                </div>
+                              )}
+                              
+                              {/* Show Transcript Preview in Chat */}
+                              {selectedVideo && selectedVideo.transcript && (
+                                <div className="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
+                                  <strong className="text-green-800">Transkrip:</strong>
+                                  <p className="text-green-700 text-xs mt-1">
+                                    {selectedVideo.transcript.length > 150 
+                                      ? selectedVideo.transcript.substring(0, 150) + '...' 
+                                      : selectedVideo.transcript}
+                                  </p>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* Chat Messages */}
+                          {videoChatMessages.map((message) => (
+                            <div key={message.id} className={`mb-3 p-3 rounded-lg ${
+                              message.sender === 'user' 
+                                ? 'bg-blue-100 border-l-4 border-blue-400 ml-8' 
+                                : 'bg-white shadow-sm mr-8'
+                            }`}>
+                              <div className="flex items-center gap-2 mb-1">
+                                <strong className={message.sender === 'user' ? 'text-blue-800' : 'text-slate-800'}>
+                                  {message.sender === 'user' ? 'Anda' : 'AI'}:
+                                </strong>
+                                <span className="text-xs text-slate-500">
+                                  {message.timestamp.toLocaleTimeString()}
+                                </span>
+                              </div>
+                              <div className={`text-sm ${
+                                message.sender === 'user' ? 'text-blue-700' : 'text-slate-700'
+                              }`}>
+                                {message.sender === 'user' ? (
+                                  <p>{message.text}</p>
+                                ) : (
+                                  <div className="prose prose-sm max-w-none">
+                                    <ReactMarkdown 
+                                      components={{
+                                        h1: ({node, ...props}) => <h1 className="text-lg font-bold text-slate-800 mb-2" {...props} />,
+                                        h2: ({node, ...props}) => <h2 className="text-base font-bold text-slate-800 mb-2" {...props} />,
+                                        h3: ({node, ...props}) => <h3 className="text-sm font-bold text-slate-800 mb-1" {...props} />,
+                                        strong: ({node, ...props}) => <strong className="font-bold text-slate-800" {...props} />,
+                                        em: ({node, ...props}) => <em className="italic text-slate-700" {...props} />,
+                                        p: ({node, ...props}) => <p className="mb-2 text-slate-700 leading-relaxed" {...props} />,
+                                        ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                                        ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                                        li: ({node, ...props}) => <li className="text-slate-700" {...props} />,
+                                        blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-400 pl-3 italic text-slate-600" {...props} />,
+                                        code: ({node, inline, ...props}) => 
+                                          inline 
+                                            ? <code className="bg-slate-100 px-1 py-0.5 rounded text-xs font-mono" {...props} />
+                                            : <code className="block bg-slate-100 p-2 rounded text-xs font-mono overflow-x-auto" {...props} />
+                                      }}
+                                    >
+                                      {message.text}
+                                    </ReactMarkdown>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Loading indicator */}
+                          {isVideoChatLoading && (
+                            <div className="mb-3 p-3 bg-white rounded-lg shadow-sm mr-8">
+                              <div className="flex items-center gap-2">
+                                <strong className="text-slate-800">AI:</strong>
+                                <div className="flex gap-1">
+                                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2 items-center">
                         <input
                           type="text"
-                          placeholder={selectedVideo ? "Fitur chat tentang video akan segera tersedia..." : "Pilih video terlebih dahulu..."}
-                          disabled={true}
-                          className="flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:bg-slate-100 disabled:text-slate-400"
+                          value={videoChatInput}
+                          onChange={(e) => setVideoChatInput(e.target.value)}
+                          onKeyPress={handleVideoChatKeyPress}
+                          placeholder={
+                            selectedVideo && selectedVideo.hasAIAnalysis 
+                              ? "Tanya saya tentang video, transkrip, atau saran perbaikan..." 
+                              : selectedVideo 
+                                ? "Klik 'Start Analysis' untuk memulai analisis video terlebih dahulu..." 
+                                : "Pilih video terlebih dahulu..."
+                          }
+                          disabled={!selectedVideo || !selectedVideo.hasAIAnalysis || isVideoChatLoading}
+                          className={`flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${
+                            selectedVideo && selectedVideo.hasAIAnalysis 
+                              ? 'bg-white text-slate-900' 
+                              : 'bg-slate-100 text-slate-400'
+                          }`}
                         />
-                        <Button size="sm" className="h-10 w-10 p-0" disabled={true}>
-                          <Send className="h-4 w-4" />
+                        <Button 
+                          size="sm" 
+                          className="h-10 w-10 p-0" 
+                          disabled={!selectedVideo || !selectedVideo.hasAIAnalysis || isVideoChatLoading}
+                          onClick={sendVideoChatMessage}
+                        >
+                          {isVideoChatLoading ? (
+                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                          ) : (
+                            <Send className="h-4 w-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -1680,36 +1967,140 @@ export default function CanvasPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="min-h-[300px] w-full rounded-xl border p-6 bg-slate-50/50 flex items-center justify-center">
-                      <div className="text-center space-y-3">
-                        <div className="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center">
-                          <Sparkles className="h-8 w-8 text-slate-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-slate-600 mb-2">Fitur Analisis Video</h3>
-                          <p className="text-sm text-slate-500 max-w-md">
-                            Fitur untuk menganalisis video dan memberikan saran perbaikan konten 
-                            akan segera tersedia di versi mendatang.
-                          </p>
-                          {selectedVideo && (
-                            <div className="mt-4 p-3 bg-white rounded-lg border">
-                              <p className="text-xs text-slate-500 mb-1">Video yang dipilih:</p>
-                              <p className="text-sm font-medium">{selectedVideo.title || 'Tanpa judul'}</p>
+                    <div className="min-h-[300px] w-full rounded-xl border p-6 bg-slate-50/50">
+                      {selectedVideo && selectedVideo.hasAIAnalysis && selectedVideo.aiSuggestions ? (
+                        // Display AI Analysis Results
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-2 mb-4">
+                            <Sparkles className="h-5 w-5 text-purple-600" />
+                            <h3 className="font-medium text-slate-700">Analisis Konten Video</h3>
+                          </div>
+                          
+                          {/* AI Analysis */}
+                          {selectedVideo.aiAnalysis && (
+                            <div className="bg-white rounded-lg p-4 border">
+                              <h4 className="font-medium text-slate-700 mb-2">Analisis Konten:</h4>
+                              <p className="text-sm text-slate-600">{selectedVideo.aiAnalysis}</p>
+                            </div>
+                          )}
+                          
+                          {/* Improvement Suggestions */}
+                          {selectedVideo.aiSuggestions?.improvements && (
+                            <div className="bg-white rounded-lg p-4 border">
+                              <h4 className="font-medium text-slate-700 mb-2">Saran Perbaikan:</h4>
+                              <ul className="text-sm text-slate-600 space-y-1">
+                                {selectedVideo.aiSuggestions.improvements.map((suggestion, index) => (
+                                  <li key={index} className="flex items-start gap-2">
+                                    <span className="text-purple-600 mt-1">•</span>
+                                    <span>{suggestion}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          
+                          {/* Caption Fix */}
+                          {selectedVideo.aiSuggestions?.captionFix && (
+                            <div className="bg-white rounded-lg p-4 border">
+                              <h4 className="font-medium text-slate-700 mb-2">Saran Caption:</h4>
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <span className="text-red-600 font-medium">Caption Saat ini:</span>
+                                  <p className="text-slate-600 italic">"{selectedVideo.caption || 'Tidak ada caption'}"</p>
+                                </div>
+                                <div>
+                                  <span className="text-green-600 font-medium">Caption Disarankan:</span>
+                                  <p className="text-slate-600">"{selectedVideo.aiSuggestions.captionFix.suggested}"</p>
+                                </div>
+                                {selectedVideo.transcript && (
+                                  <div className="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
+                                    <span className="text-blue-600 font-medium text-xs">Transkrip Video:</span>
+                                    <p className="text-blue-700 text-xs mt-1 max-h-20 overflow-y-auto leading-relaxed">
+                                      "{selectedVideo.transcript}"
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Hashtag Suggestions */}
+                          {selectedVideo.aiSuggestions?.tagsFix?.suggested && (
+                            <div className="bg-white rounded-lg p-4 border">
+                              <h4 className="font-medium text-slate-700 mb-2">Saran Hashtag:</h4>
+                              <div className="flex flex-wrap gap-2">
+                                {selectedVideo.aiSuggestions.tagsFix.suggested.map((tag, index) => (
+                                  <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                                    #{tag}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
-                      </div>
+                      ) : selectedVideo && selectedVideo.transcript_status === 'completed' ? (
+                        // Video has transcript but no AI analysis yet
+                        <div className="text-center space-y-3">
+                          <div className="w-16 h-16 mx-auto bg-orange-100 rounded-full flex items-center justify-center">
+                            <Sparkles className="h-8 w-8 text-orange-500" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-slate-600 mb-2">Transkrip Tersedia</h3>
+                            <p className="text-sm text-slate-500 max-w-md">
+                              Video sudah memiliki transkrip, tapi belum dianalisis oleh AI. 
+                              Klik "Start Analysis" untuk mendapatkan saran perbaikan.
+                            </p>
+                          </div>
+                        </div>
+                      ) : selectedVideo ? (
+                        // Video selected but no analysis
+                        <div className="text-center space-y-3">
+                          <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
+                            <Sparkles className="h-8 w-8 text-blue-500" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-slate-600 mb-2">Siap untuk Analisis</h3>
+                            <p className="text-sm text-slate-500 max-w-md">
+                              Klik "Start Analysis" untuk menganalisis video "{selectedVideo.title || 'Tanpa judul'}" 
+                              dan mendapatkan saran perbaikan dari AI.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        // No video selected
+                        <div className="text-center space-y-3 flex items-center justify-center h-full">
+                          <div>
+                            <div className="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center">
+                              <Sparkles className="h-8 w-8 text-slate-400" />
+                            </div>
+                            <div className="mt-4">
+                              <h3 className="font-medium text-slate-600 mb-2">Analisis Video dengan AI</h3>
+                              <p className="text-sm text-slate-500 max-w-md">
+                                Pilih video dari daftar di sebelah kiri untuk melihat analisis dan saran perbaikan dari AI.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                   <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-xs text-slate-600">
-                      <span>Fitur analisis video akan segera tersedia</span>
+                      {selectedVideo && selectedVideo.hasAIAnalysis ? (
+                        <span>Analisis selesai • {selectedVideo.aiSuggestions?.improvements?.length || 0} saran tersedia</span>
+                      ) : selectedVideo ? (
+                        <span>Pilih video dan klik "Start Analysis" untuk mendapatkan saran AI</span>
+                      ) : (
+                        <span>Pilih video untuk melihat analisis dan saran perbaikan</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button disabled variant="secondary">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Segera Hadir
-                      </Button>
+                      {selectedVideo && selectedVideo.hasAIAnalysis && (
+                        <Button size="sm" variant="outline">
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Analisis Selesai
+                        </Button>
+                      )}
                     </div>
                   </CardFooter>
                 </Card>
@@ -1830,6 +2221,45 @@ export default function CanvasPage() {
           </div>
         </div>
       )}
+
+      {/* Video Analysis is now integrated directly in the discuss mode */}
+
+      {/* Analysis Progress Modal */}
+      <AnalysisProgressModal
+        isOpen={showAnalysisProgress}
+        onClose={() => {
+          setShowAnalysisProgress(false);
+          setAnalysisVideo(null);
+        }}
+        video={analysisVideo}
+        onComplete={(updatedVideo) => {
+          console.log('Analysis completed:', updatedVideo);
+          setShowAnalysisProgress(false);
+          setAnalysisVideo(null);
+          toast.success('Analisis video selesai! Sekarang Anda bisa chat dengan AI tentang video ini.');
+          
+          // Update selectedVideo dengan data terbaru
+          setSelectedVideo(updatedVideo);
+          
+          // Update videos list dengan data terbaru
+          setVideos(prevVideos => 
+            prevVideos.map(video => 
+              video._id === updatedVideo._id ? updatedVideo : video
+            )
+          );
+          
+          // Refresh video list untuk memastikan data sinkron dengan database
+          setTimeout(() => {
+            fetchVideos();
+          }, 500);
+        }}
+        onError={(error) => {
+          console.error('Analysis error:', error);
+          setShowAnalysisProgress(false);
+          setAnalysisVideo(null);
+          toast.error('Analisis video gagal: ' + error);
+        }}
+      />
     </div>
   );
 }
