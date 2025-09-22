@@ -657,7 +657,11 @@ export default function CanvasPage() {
     fetchPersonas();
   };
 
+  
   const handleDeleteChat = async (sessionId) => {
+
+//   const handleDeleteChat = (sessionId) => {
+
     try {
       setDeletingChat(sessionId);
       
@@ -734,6 +738,38 @@ export default function CanvasPage() {
         className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
       setDeletingChat(null);
+=======
+  const handleDeleteChat = async (sessionId) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        console.error('No auth token found');
+        return;
+      }
+
+      const response = await fetch(`http://localhost:3000/chat-sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        // Update local state
+        const updatedSessions = chatSessions.filter(session => session._id !== sessionId);
+        setChatSessions(updatedSessions);
+        
+        // If we're deleting the current chat, start a new one
+        if (currentChatId === sessionId) {
+          handleNewChat();
+        }
+      } else {
+        console.error('Failed to delete chat session:', response.status);
+      }
+    } catch (error) {
+      console.error('Error deleting chat session:', error);
+
     }
   };
 

@@ -17,6 +17,7 @@ import {
   IconLogout,
   IconBrush,
 } from "@tabler/icons-react";
+import planoriaLogo from "@/assets/planoria-logo.png";
 
 const menuItems = [
   // Dashboard - direct link, no submenu
@@ -67,11 +68,6 @@ const menuItems = [
         href: "/schedules/create",
         icon: <IconCalendar className="h-4 w-4" />,
       },
-      {
-        label: "Schedule Detail",
-        href: "/schedules/id",
-        icon: <IconCalendar className="h-4 w-4" />,
-      },
     ],
   },
   // Settings category with submenu
@@ -99,8 +95,7 @@ const menuItems = [
 function Logo() {
   return (
     <a href="#" className="flex items-center space-x-2 py-1 text-sm">
-      <div className="h-5 w-6 bg-black rounded" />
-      <span className="font-medium">Acet Labs</span>
+      <img src={planoriaLogo} alt="Planoria" className="h-12 w-auto" />
     </a>
   );
 }
@@ -108,7 +103,7 @@ function Logo() {
 function LogoIcon() {
   return (
     <a href="#" className="flex items-center space-x-2 py-1 text-sm">
-      <div className="h-5 w-6 bg-black rounded" />
+      <img src={planoriaLogo} alt="Planoria" className="h-10 w-10 object-contain" />
     </a>
   );
 }
