@@ -18,7 +18,7 @@ import { ArrowLeft, AlertCircle, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth.jsx";
 import { useToast } from "@/hooks/use-toast";
-import {PointerHighlight} from "@/components/ui/pointer-highlight"
+import { PointerHighlight } from "@/components/ui/pointer-highlight";
 
 const LoginPage = memo(() => {
   const { login, googleLogin, isAuthenticated } = useAuth();
@@ -246,7 +246,7 @@ const LoginPage = memo(() => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="h-screen bg-white">
       {/* Top bar (Back / Sign up) */}
       <div className="mx-auto px-8 pt-6 flex items-center justify-between">
         {/* <Link
@@ -260,30 +260,28 @@ const LoginPage = memo(() => {
       </div>
 
       {/* Main content */}
-      <div
-        className="mx-auto flex items-center justify-center px-8 py-6 min-h-screen"
-        style={{
-          background:
-            "radial-gradient(80% 80% at 30% 50%, rgba(147,51,234,0.8) 0%, rgba(196,181,253,0.6) 30%, rgba(255,255,255,0.9) 70%, rgba(255,255,255,1) 100%)",
-          zIndex: 0,
-        }}
-      >
-        <div className="flex w-full items-center gap-8 lg:gap-16">
+      <div className="mx-auto flex items-center justify-center h-screen">
+        <div className="flex w-full items-center gap-3 lg:gap-12">
           {/* LEFT: Hero content (hide on small screens) */}
-          <div
-            className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden"
-            data-aos="zoom-in"
-            data-aos-delay="120"
-          >
-            <div aria-hidden className="absolute inset-0 w-full h-full" />
+          <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden">
+            {/* decorative blurred radial behind the H1 */}
+            <div
+              aria-hidden
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[680px] h-[420px] rounded-full pointer-events-none blur-3xl"
+              style={{
+                background:
+                  "radial-gradient(60% 60% at 40% 40%, rgba(190,150,235,0.98) 0%, rgba(216,185,245,0.92) 35%, rgba(243,236,250,0.9) 70%, rgba(255,255,255,0.0) 100%)",
+                zIndex: 0,
+              }}
+            />
             <div className="p-8 lg:p-12 relative z-10">
               <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
-                <PointerHighlight>
-                  <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
+                  <PointerHighlight>
                     Create Impactful Stories with Planoria Today
                     <span className="align-super">^</span>
-                  </h1>
-                </PointerHighlight>
+                  </PointerHighlight>
+                </h1>
               </div>
             </div>
           </div>
