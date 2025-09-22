@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { UploadCloud, Film, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import HoverButton from "@/components/ui/HoverButton";
 import {
   Card,
   CardHeader,
@@ -34,7 +35,8 @@ export default function VideoUploadPage() {
         title: "Error",
         description: "Pilih file video.",
         variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
       return;
     }
@@ -43,7 +45,8 @@ export default function VideoUploadPage() {
         title: "Error",
         description: "Caption wajib diisi.",
         variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
       return;
     }
@@ -65,7 +68,8 @@ export default function VideoUploadPage() {
         title: "Success!",
         description: `✔ Sukses upload. ID: ${data?.video?._id || "-"}`,
         variant: "default",
-        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        className:
+          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
       });
       // Opsional: redirect ke library
       // navigate(`/videos`);
@@ -74,7 +78,8 @@ export default function VideoUploadPage() {
         title: "Upload Failed",
         description: e?.response?.data?.error || "Upload gagal.",
         variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        className:
+          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
     } finally {
       setUploading(false);
@@ -127,20 +132,7 @@ export default function VideoUploadPage() {
                 </div>
               </div>
 
-              {/* Preview sederhana */}
-              <div className="mt-4">
-                {previewUrl ? (
-                  <video
-                    src={previewUrl}
-                    controls
-                    className="w-full rounded-xl border"
-                  />
-                ) : (
-                  <div className="text-xs text-slate-500">
-                    Belum ada preview.
-                  </div>
-                )}
-              </div>
+              {/* Preview is shown in the right column (Catatan) when available */}
 
               {/* Metadata minimal */}
               <div className="mt-4 space-y-2">
@@ -165,39 +157,44 @@ export default function VideoUploadPage() {
               </div>
             </CardContent>
             <CardFooter className="flex items-center justify-end">
-              <Button
+              <HoverButton
                 onClick={onSave}
                 disabled={!file || !caption || uploading}
+                className="cursor-pointer"
               >
                 <Save className="mr-2 h-4 w-4" />{" "}
                 {uploading ? "Menyimpan…" : "Simpan"}
-              </Button>
+              </HoverButton>
             </CardFooter>
           </Card>
 
-          {/* Kolom kanan: catatan ringkas */}
+          {/* Kolom kanan: preview & catatan ringkas */}
           <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-lg">Catatan</CardTitle>
-              <CardDescription>
-                File dikirim sebagai <code>multipart/form-data</code> ke{" "}
-                <code>POST /videos</code>.
+            <CardHeader className="text-center">
+              <CardTitle className="text-lg mx-auto">Preview & Catatan</CardTitle>
+              <CardDescription className="mx-auto">
+                Pratinjau video yang dipilih akan muncul di sini. Informasi upload
+                dan catatan teknis ditampilkan di bawah preview.
               </CardDescription>
             </CardHeader>
-            <CardContent className="text-sm text-slate-700 space-y-2">
-              <p>
-                - Field form: <strong>file</strong> (video),{" "}
-                <strong>caption</strong>, <strong>hashtags</strong>,{" "}
-                <em>title</em> (opsional).
-              </p>
-              <p>
-                - Server menyimpan <code>secure_url</code> Cloudinary + metadata
-                di MongoDB.
-              </p>
-              <p>
-                - Setelah sukses, kamu bisa redirect ke Video Library atau tetap
-                di halaman ini.
-              </p>
+            <CardContent className="text-sm text-slate-700 space-y-4">
+              <div className="flex justify-center">
+                {previewUrl ? (
+                  <div className="w-full max-w-[360px]">
+                    <div className="relative w-full aspect-[9/16] rounded-xl overflow-hidden border">
+                      <video
+                        src={previewUrl}
+                        controls
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-100 text-xs text-slate-500 py-3 px-3 rounded">
+                    Belum ada preview.
+                  </div>
+                )}  
+              </div>
             </CardContent>
           </Card>
         </div>
