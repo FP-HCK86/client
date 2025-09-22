@@ -4,6 +4,7 @@ import {
   Film,
   Sparkles,
   Save,
+  MessageSquare,
   Lightbulb,
   Video,
   Send,
@@ -31,7 +32,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import api from "../api/client";
 
 const MAX_FILE_MB = 1024; // 1 GB
 
@@ -76,11 +76,6 @@ export default function CanvasPage() {
   const [chatSessions, setChatSessions] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
 
-  // Video List State (for discuss mode)
-  const [videos, setVideos] = useState([]);
-  const [selectedVideo, setSelectedVideo] = useState(null);
-  const [loadingVideos, setLoadingVideos] = useState(false);
-
   // Fetch personas and load chat history on component mount
   React.useEffect(() => {
     // Clear existing state
@@ -109,13 +104,6 @@ export default function CanvasPage() {
       deactivateAllPersonas();
     };
   }, []);
-
-  // Fetch videos when switching to discuss mode
-  React.useEffect(() => {
-    if (canvasMode === "discuss") {
-      fetchVideos();
-    }
-  }, [canvasMode]);
 
   // Function to deactivate all personas
   const deactivateAllPersonas = async () => {
@@ -198,33 +186,6 @@ export default function CanvasPage() {
     } catch (error) {
       console.error("Failed to fetch personas:", error);
       setPersonas([]); // Clear personas on error
-    }
-  };
-
-  const fetchVideos = async () => {
-    try {
-      setLoadingVideos(true);
-      console.log("Fetching videos from MongoDB...");
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.log('No authentication token found, skipping video fetch');
-        setVideos([]);
-        return;
-      }
-      
-      const response = await api.get("/videos");
-      if (response.data && response.data.items) {
-        console.log("Videos from MongoDB:", response.data.items);
-        setVideos(response.data.items);
-      } else {
-        console.error("Invalid video data structure");
-        setVideos([]);
-      }
-    } catch (error) {
-      console.error("Failed to fetch videos:", error);
-      setVideos([]);
-    } finally {
-      setLoadingVideos(false);
     }
   };
 
@@ -511,28 +472,12 @@ export default function CanvasPage() {
   };
 
   // Chat History Management Functions
-  const loadChatHistory = async () => {
+  const loadChatHistory = () => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        setChatSessions([]);
-        return;
-      }
-
-      const response = await fetch('http://localhost:3000/chat-sessions', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setChatSessions(data.data.sessions || []);
-      } else {
-        console.error('Failed to load chat history:', response.status);
-        setChatSessions([]);
+      const savedSessions = localStorage.getItem('canvasChatSessions');
+      if (savedSessions) {
+        const sessions = JSON.parse(savedSessions);
+        setChatSessions(sessions);
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
@@ -542,44 +487,26 @@ export default function CanvasPage() {
 
   const saveChatSession = async (chatData) => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.error('No auth token found');
-        return null;
-      }
-
       // Generate AI title for the chat
       const chatTitle = await generateChatTitle(chatData.messages);
       
-      const sessionData = {
+      const newSession = {
+        id: Date.now().toString(),
         title: chatTitle,
         messages: chatData.messages,
         persona: chatData.persona,
-        generatedContent: chatData.generatedContent
+        generatedContent: chatData.generatedContent,
+        preview: chatData.messages.find(m => m.role === 'user')?.content?.substring(0, 100) || 'No messages',
+        messageCount: chatData.messages.length,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
 
-      const response = await fetch('http://localhost:3000/chat-sessions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(sessionData)
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const newSession = data.data.session;
-        
-        // Update local state
-        const updatedSessions = [newSession, ...chatSessions];
-        setChatSessions(updatedSessions);
-        
-        return newSession;
-      } else {
-        console.error('Failed to save chat session:', response.status);
-        return null;
-      }
+      const updatedSessions = [newSession, ...chatSessions];
+      setChatSessions(updatedSessions);
+      localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
+      
+      return newSession;
     } catch (error) {
       console.error('Error saving chat session:', error);
       return null;
@@ -588,21 +515,35 @@ export default function CanvasPage() {
 
   const generateChatTitle = async (messages) => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return 'Chat Baru';
+      // Get user messages for context
+      const userMessages = messages.filter(m => m.role === 'user').slice(0, 3);
+      if (userMessages.length === 0) return 'Chat Baru';
 
-      const response = await fetch('http://localhost:3000/chat-sessions/generate-title', {
-        method: 'POST',
+      const context = userMessages.map(m => m.content).join(' ');
+      
+      const response = await fetch("http://localhost:3000/ai/chat", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ messages })
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: "Kamu adalah asisten yang membuat judul singkat untuk percakapan. Berikan judul dalam bahasa Indonesia yang menggambarkan topik utama percakapan (maksimal 5 kata). Jangan gunakan tanda kutip atau kata 'judul'."
+            },
+            {
+              role: "user", 
+              content: `Buatkan judul singkat untuk percakapan tentang: ${context}`
+            }
+          ],
+          usePersona: false
+        })
       });
 
       if (response.ok) {
         const data = await response.json();
-        return data.data.title || 'Chat Baru';
+        return data.data.response.trim();
       }
     } catch (error) {
       console.error('Error generating chat title:', error);
@@ -617,7 +558,7 @@ export default function CanvasPage() {
   };
 
   const handleSelectChat = (session) => {
-    setCurrentChatId(session._id);
+    setCurrentChatId(session.id);
     setChatMessages(session.messages || []);
     setSelectedPersona(session.persona || null);
     setGeneratedContent(session.generatedContent || null);
@@ -657,77 +598,31 @@ export default function CanvasPage() {
     fetchPersonas();
   };
 
-  const handleDeleteChat = async (sessionId) => {
+  const handleDeleteChat = (sessionId) => {
     try {
       setDeletingChat(sessionId);
+      const updatedSessions = chatSessions.filter(session => session.id !== sessionId);
+      setChatSessions(updatedSessions);
+      localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
       
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        console.error('No auth token found');
-        // If no token, fall back to local-only deletion
-        const updatedSessions = chatSessions.filter(session => session.id !== sessionId);
-        setChatSessions(updatedSessions);
-        localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
-        
-        // If we're deleting the current chat, start a new one
-        if (currentChatId === sessionId) {
-          handleNewChat();
-        }
-        
-        toast({
-          title: "Chat Berhasil Dihapus",
-          description: "Chat telah berhasil dihapus dari riwayat",
-          className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
-        });
-        
-        // Give user time to see the success toast
-        setTimeout(() => {
-          setDeletingChat(null);
-        }, 2000);
-        return;
+      // If we're deleting the current chat, start a new one
+      if (currentChatId === sessionId) {
+        handleNewChat();
       }
-
-      // Try to delete from server first
-      const response = await fetch(`http://localhost:3000/chat-sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      
+      toast({
+        title: "Chat Berhasil Dihapus",
+        description: "Chat telah berhasil dihapus dari riwayat",
+        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
       });
-
-      if (response.ok) {
-        // Update local state after successful server deletion
-        const updatedSessions = chatSessions.filter(session => session._id !== sessionId && session.id !== sessionId);
-        setChatSessions(updatedSessions);
-        localStorage.setItem('canvasChatSessions', JSON.stringify(updatedSessions));
-        
-        // If we're deleting the current chat, start a new one
-        if (currentChatId === sessionId) {
-          handleNewChat();
-        }
-        
-        toast({
-          title: "Chat Berhasil Dihapus",
-          description: "Chat telah berhasil dihapus dari riwayat",
-          className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
-        });
-        
-        // Give user time to see the success toast
-        setTimeout(() => {
-          setDeletingChat(null);
-        }, 2000);
-      } else {
-        console.error('Failed to delete chat session:', response.status);
-        toast({
-          title: "Gagal Menghapus Chat",
-          description: "Terjadi kesalahan saat menghapus chat dari server",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-        });
+      
+      // Give user time to see the success toast
+      setTimeout(() => {
         setDeletingChat(null);
-      }
+      }, 2000);
+      
     } catch (error) {
-      console.error('Error deleting chat session:', error);
+      console.log(error, "<<<Error deleting chat session");
       toast({
         title: "Gagal Menghapus Chat",
         description: "Terjadi kesalahan saat menghapus chat",
@@ -782,7 +677,7 @@ export default function CanvasPage() {
               onClick={() => setCanvasMode("create")}
               className="flex items-center gap-2"
             >
-              <Sparkles className="h-4 w-4" />
+              <MessageSquare className="h-4 w-4" />
               Buat Konten dari Awal
             </Button>
             <Button
@@ -805,7 +700,7 @@ export default function CanvasPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="flex items-center gap-2 text-lg">
-                        <Lightbulb className="h-5 w-5" /> Chat dengan AI
+                        <MessageSquare className="h-5 w-5" /> Chat dengan AI
                       </CardTitle>
                       <CardDescription>
                         Mulai percakapan untuk membuat konten video dari awal
@@ -1546,120 +1441,63 @@ export default function CanvasPage() {
 
           {canvasMode === "discuss" && (
             <>
-              {/* Mode 2: Diskusi Konten yang Sudah Ada - Video List */}
+              {/* Mode 2: Diskusi Konten yang Sudah Ada - Upload Video */}
               <Card className="lg:col-span-1">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Film className="h-5 w-5" /> Pilih Video
+                    <UploadCloud className="h-5 w-5" /> Upload Video
                   </CardTitle>
                   <CardDescription>
-                    Pilih video dari library untuk didiskusikan dengan AI
+                    Upload video yang ingin didiskusikan dengan AI
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {/* Video Selection */}
-                    <div className="max-h-80 overflow-y-auto space-y-2">
-                      {loadingVideos ? (
-                        <div className="text-center py-8">
-                          <div className="text-sm text-slate-500">Memuat video...</div>
+                    <div className="group relative w-full rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center transition hover:border-slate-300">
+                      <input
+                        id="file"
+                        type="file"
+                        accept="video/*"
+                        className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                      />
+                      <div className="pointer-events-none">
+                        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-50 ring-1 ring-inset ring-slate-200">
+                          <Video className="h-7 w-7" />
                         </div>
-                      ) : videos.length === 0 ? (
-                        <div className="text-center py-8">
-                          <div className="text-sm text-slate-500">Belum ada video tersedia</div>
-                          <div className="text-xs text-slate-400 mt-1">Upload video terlebih dahulu</div>
-                        </div>
-                      ) : (
-                        videos.map((video) => (
-                          <div
-                            key={video._id}
-                            onClick={() => setSelectedVideo(video)}
-                            className={`cursor-pointer rounded-lg border-2 p-3 transition-all hover:bg-slate-50 ${
-                              selectedVideo?._id === video._id
-                                ? "border-blue-300 bg-blue-50"
-                                : "border-slate-200"
-                            }`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="w-16 h-12 bg-black/5 rounded-md overflow-hidden">
-                                {video.secure_url ? (
-                                  <video
-                                    src={video.secure_url}
-                                    className="w-full h-full object-cover"
-                                    muted
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Video className="h-4 w-4 text-slate-400" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="text-sm font-medium text-slate-900 truncate">
-                                  {video.title || "Video tanpa judul"}
-                                </h4>
-                                <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                                  {video.caption || "Tidak ada caption"}
-                                </p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <span className="text-xs text-slate-400">
-                                    {video.duration_sec ? `${Math.floor(video.duration_sec / 60)}:${(video.duration_sec % 60).toString().padStart(2, '0')}` : ""}
-                                  </span>
-                                  {video.hashtags && (
-                                    <span className="text-xs text-blue-600">
-                                      {video.hashtags.split(' ').slice(0, 2).join(' ')}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* Selected Video Preview */}
-                    {selectedVideo && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded-lg border-2 border-blue-200">
-                        <div className="flex items-center gap-2 text-sm font-medium text-blue-800 mb-2">
-                          <Video className="h-4 w-4" />
-                          Video Terpilih
-                        </div>
-                        <div className="text-sm text-blue-700">
-                          <div className="font-medium">{selectedVideo.title || "Video tanpa judul"}</div>
-                          <div className="text-xs text-blue-600 mt-1">
-                            {selectedVideo.caption && selectedVideo.caption.substring(0, 100)}
-                            {selectedVideo.caption && selectedVideo.caption.length > 100 && "..."}
-                          </div>
-                        </div>
+                        <p className="mt-3 text-sm">
+                          <span className="font-medium">Seret & lepas</span>{" "}
+                          atau klik untuk{" "}
+                          <span className="font-medium">pilih video</span>
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Tipe: video/* · Maks {MAX_FILE_MB}MB
+                        </p>
                       </div>
-                    )}
+                    </div>
 
                     {/* Chat dengan AI tentang video */}
                     <div className="mt-6">
                       <div className="flex items-center gap-2 text-sm text-slate-600 mb-2">
-                        <Video className="h-4 w-4" />
+                        <MessageSquare className="h-4 w-4" />
                         <span className="font-medium">Chat tentang Video</span>
                       </div>
                       <div className="h-[200px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3">
                         <div className="text-sm text-slate-600">
                           <div className="mb-4 p-3 bg-white rounded-lg shadow-sm">
-                            <strong>AI:</strong> {selectedVideo 
-                              ? `Video "${selectedVideo.title || 'tanpa judul'}" sudah dipilih. Saat ini saya hanya bisa melihat metadata video (judul, caption, hashtags). Untuk analisis lengkap video, fitur ini akan dikembangkan di masa depan.`
-                              : "Pilih video terlebih dahulu. Saat ini saya hanya bisa melihat metadata video seperti judul, caption, dan hashtags."
-                            }
+                            <strong>AI:</strong> Upload video terlebih dahulu,
+                            lalu saya akan memberikan saran perbaikan untuk
+                            konten Anda.
                           </div>
                         </div>
                       </div>
                       <div className="flex gap-2 items-center">
                         <input
                           type="text"
-                          placeholder={selectedVideo ? "Fitur chat tentang video akan segera tersedia..." : "Pilih video terlebih dahulu..."}
-                          disabled={true}
-                          className="flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:bg-slate-100 disabled:text-slate-400"
+                          placeholder="Tanyakan tentang video Anda..."
+                          className="flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                         />
-                        <Button size="sm" className="h-10 w-10 p-0" disabled={true}>
-                          <Send className="h-4 w-4" />
+                        <Button size="sm" className="h-10 w-10 p-0">
+                          <MessageSquare className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
@@ -1680,35 +1518,94 @@ export default function CanvasPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="min-h-[300px] w-full rounded-xl border p-6 bg-slate-50/50 flex items-center justify-center">
-                      <div className="text-center space-y-3">
-                        <div className="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center">
-                          <Sparkles className="h-8 w-8 text-slate-400" />
-                        </div>
-                        <div>
-                          <h3 className="font-medium text-slate-600 mb-2">Fitur Analisis Video</h3>
-                          <p className="text-sm text-slate-500 max-w-md">
-                            Fitur untuk menganalisis video dan memberikan saran perbaikan konten 
-                            akan segera tersedia di versi mendatang.
+                    <Tabs defaultValue="analysis" className="w-full">
+                      <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="analysis">Analisis</TabsTrigger>
+                        <TabsTrigger value="caption-fix">Caption</TabsTrigger>
+                        <TabsTrigger value="tags-fix">Tags</TabsTrigger>
+                        <TabsTrigger value="suggestions">
+                          Saran Lain
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="analysis" className="mt-4">
+                        <label className="block text-sm font-medium mb-2">
+                          Analisis Video
+                        </label>
+                        <div className="min-h-[200px] w-full rounded-xl border p-3 bg-slate-50/50">
+                          <p className="text-sm text-slate-500">
+                            Analisis video akan muncul di sini setelah upload
+                            dan proses AI...
                           </p>
-                          {selectedVideo && (
-                            <div className="mt-4 p-3 bg-white rounded-lg border">
-                              <p className="text-xs text-slate-500 mb-1">Video yang dipilih:</p>
-                              <p className="text-sm font-medium">{selectedVideo.title || 'Tanpa judul'}</p>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    </div>
+                      </TabsContent>
+                      <TabsContent value="caption-fix" className="mt-4">
+                        <label className="block text-sm font-medium mb-2">
+                          Saran Perbaikan Caption
+                        </label>
+                        <div className="space-y-3">
+                          <div className="p-3 rounded-xl border bg-white">
+                            <span className="text-xs text-slate-500 block mb-1">
+                              Caption Saat Ini:
+                            </span>
+                            <p className="text-sm">
+                              Akan terdeteksi setelah upload video...
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-xl border bg-blue-50/50">
+                            <span className="text-xs text-blue-600 block mb-1">
+                              Saran AI:
+                            </span>
+                            <p className="text-sm">
+                              Saran perbaikan caption akan muncul di sini...
+                            </p>
+                          </div>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="tags-fix" className="mt-4">
+                        <label className="block text-sm font-medium mb-2">
+                          Saran Perbaikan Tags
+                        </label>
+                        <div className="space-y-3">
+                          <div className="p-3 rounded-xl border bg-white">
+                            <span className="text-xs text-slate-500 block mb-2">
+                              Tags Saat Ini:
+                            </span>
+                            <div className="text-sm text-slate-500">
+                              Akan terdeteksi setelah upload video...
+                            </div>
+                          </div>
+                          <div className="p-3 rounded-xl border bg-green-50/50">
+                            <span className="text-xs text-green-600 block mb-2">
+                              Tags yang Disarankan:
+                            </span>
+                            <div className="text-sm text-slate-500">
+                              Saran tags akan muncul di sini...
+                            </div>
+                          </div>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="suggestions" className="mt-4">
+                        <label className="block text-sm font-medium mb-2">
+                          Saran Perbaikan Lainnya
+                        </label>
+                        <div className="min-h-[200px] w-full rounded-xl border p-3 bg-slate-50/50">
+                          <p className="text-sm text-slate-500">
+                            Saran perbaikan lainnya akan muncul di sini setelah
+                            AI menganalisis video...
+                          </p>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
                   </CardContent>
                   <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-xs text-slate-600">
-                      <span>Fitur analisis video akan segera tersedia</span>
+                      <span>Upload video untuk mendapatkan saran AI</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button disabled variant="secondary">
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Segera Hadir
+                      <Button variant="secondary">Analisis Ulang</Button>
+                      <Button disabled>
+                        <Save className="h-4 w-4 mr-2" />
+                        Terapkan Saran
                       </Button>
                     </div>
                   </CardFooter>
