@@ -484,7 +484,7 @@ export default function ScheduleCreatePage() {
                 <div className="flex-1">
                   <div className="font-semibold">Batas tercapai</div>
                   <div className="text-sm">
-                    Anda telah mencapai batas 3 schedule. Upgrade untuk akses
+                    Anda telah mencapai batas 2 schedule. Upgrade untuk akses
                     unlimited.
                   </div>
                 </div>
