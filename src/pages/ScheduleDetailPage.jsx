@@ -24,7 +24,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import api from "../api/client";
+import api from "@/api/client";
+import FullPageLoader from "@/components/ui/FullPageLoader";
 
 export default function ScheduleDetailPage() {
   const { id } = useParams();
@@ -50,10 +51,9 @@ export default function ScheduleDetailPage() {
       } catch (err) {
         setError(err.response?.data?.error || "Failed to fetch schedule");
         toast({
-          title: "Gagal Memuat Schedule",
+          title: "Failed to load schedule",
           description: err.response?.data?.error || "Failed to fetch schedule",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -62,12 +62,7 @@ export default function ScheduleDetailPage() {
     if (id) fetchSchedule();
   }, [id, toast]);
 
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
-      </div>
-    );
+  if (loading) return <FullPageLoader text="Loading schedule..." />;
   if (error)
     return (
       <div className="min-h-screen flex items-center justify-center text-red-500">
@@ -76,9 +71,7 @@ export default function ScheduleDetailPage() {
     );
   if (!schedule)
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Schedule not found
-      </div>
+      <div className="min-h-screen flex items-center justify-center">Schedule not found</div>
     );
 
   const fmtDateTime = (iso) =>
@@ -140,17 +133,15 @@ export default function ScheduleDetailPage() {
       setSchedule(data.schedule);
       setEditing(false);
       toast({
-        title: "Schedule Berhasil Diperbarui",
-        description: data?.message || "Schedule berhasil diperbarui",
-        className:
-          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        title: "Schedule updated",
+        description: data?.message || "Schedule updated successfully",
+        variant: "success",
       });
     } catch (e) {
       toast({
-        title: "Gagal Memperbarui Schedule",
-        description: e?.response?.data?.error || "Gagal memperbarui schedule",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        title: "Failed to update schedule",
+        description: e?.response?.data?.error || "Failed to update schedule",
+        variant: "destructive",
       });
     } finally {
       setSubmitting(false);
@@ -162,10 +153,9 @@ export default function ScheduleDetailPage() {
       setDeleting(true);
       await api.delete(`/schedules/${id}`);
       toast({
-        title: "Schedule Berhasil Dihapus",
-        description: "Schedule telah berhasil dihapus",
-        className:
-          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        title: "Schedule deleted",
+        description: "Schedule has been deleted",
+        variant: "success",
       });
 
       // Give user time to see the success toast before redirecting
@@ -174,10 +164,9 @@ export default function ScheduleDetailPage() {
       }, 2000); // 2 seconds delay
     } catch (e) {
       toast({
-        title: "Gagal Menghapus Schedule",
-        description: e?.response?.data?.error || "Gagal menghapus schedule",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        title: "Failed to delete schedule",
+        description: e?.response?.data?.error || "Failed to delete schedule",
+        variant: "destructive",
       });
       setDeleting(false); // Only reset deleting state on error, not on success
     }
@@ -205,9 +194,7 @@ export default function ScheduleDetailPage() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <div>
-              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-                Schedule Detail
-              </h1>
+                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Schedule Detail</h1>
               <p className="text-slate-600 text-sm mt-1">ID: {schedule._id}</p>
             </div>
           </div>
@@ -215,20 +202,11 @@ export default function ScheduleDetailPage() {
             {schedule.status === "pending" ? (
               editing ? (
                 <>
-                  <HoverButton
-                    size="sm"
-                    onClick={saveEdits}
-                    disabled={submitting}
-                  >
-                    {submitting ? "Menyimpan…" : "Simpan"}
+                  <HoverButton size="sm" onClick={saveEdits} disabled={submitting}>
+                    {submitting ? "Saving..." : "Save"}
                   </HoverButton>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditing(false)}
-                    disabled={submitting}
-                  >
-                    Batal
+                  <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={submitting}>
+                    Cancel
                   </Button>
                 </>
               ) : (
@@ -242,29 +220,21 @@ export default function ScheduleDetailPage() {
                   </HoverButton>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        disabled={deleting}
-                        className="border border-black"
-                      >
-                        {deleting ? "Menghapus…" : "Delete"}
+                      <Button variant="ghost" disabled={deleting} className="border border-black">
+                        {deleting ? "Deleting..." : "Delete"}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Hapus Schedule</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Apakah Anda yakin ingin menghapus schedule ini?
-                          Tindakan ini tidak dapat dibatalkan.
+                          Are you sure you want to delete this schedule? This action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteSchedule}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          Hapus
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteSchedule} className="bg-red-600 hover:bg-red-700">
+                          Delete
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -278,10 +248,9 @@ export default function ScheduleDetailPage() {
                   className="border border-black"
                   onClick={() => {
                     toast({
-                      title: "Tidak Dapat Diedit",
-                      description: `Schedule tidak dapat diedit karena status sudah ${schedule.status}`,
-                      className:
-                        "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
+                      title: "Cannot edit",
+                      description: `Schedule cannot be edited because status is ${schedule.status}`,
+                      variant: "destructive",
                     });
                   }}
                 >
@@ -292,10 +261,9 @@ export default function ScheduleDetailPage() {
                   className="border border-black"
                   onClick={() => {
                     toast({
-                      title: "Tidak Dapat Dihapus",
-                      description: `Schedule tidak dapat dihapus karena status sudah ${schedule.status}`,
-                      className:
-                        "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
+                      title: "Cannot delete",
+                      description: `Schedule cannot be deleted because status is ${schedule.status}`,
+                      variant: "destructive",
                     });
                   }}
                 >
@@ -321,7 +289,7 @@ export default function ScheduleDetailPage() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500 bg-black/5">
                   <Play className="h-10 w-10 text-slate-600" />
                   <span className="text-sm text-slate-600">
-                    (Preview video akan tampil di sini)
+                    (Preview video will appear here)
                   </span>
                 </div>
               )}
@@ -351,7 +319,7 @@ export default function ScheduleDetailPage() {
           {/* Info panel */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Info Jadwal</CardTitle>
+              <CardTitle className="text-lg">Schedule Info</CardTitle>
               <CardDescription>Status & metadata</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -381,7 +349,7 @@ export default function ScheduleDetailPage() {
                 )}
               </div>
               <div className="rounded-xl border p-3 text-sm">
-                <div className="text-xs text-slate-500">Waktu Terjadwal</div>
+                <div className="text-xs text-slate-500">Scheduled Time</div>
                 <div className="mt-0.5 font-medium flex items-center gap-2">
                   <CalendarDays className="h-4 w-4" />{" "}
                   {fmtDateTime(schedule.scheduled_at)}
@@ -400,7 +368,7 @@ export default function ScheduleDetailPage() {
                   <textarea
                     value={editCaption}
                     onChange={(e) => setEditCaption(e.target.value)}
-                    placeholder="Tulis caption..."
+                    placeholder="Write caption..."
                     className="min-h-[100px] w-full rounded-xl border p-3 text-sm"
                   />
                 )}

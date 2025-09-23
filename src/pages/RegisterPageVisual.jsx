@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, memo } from "react";
+import AOS from "aos";
+import "aos/dist/aos.css";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -9,13 +11,23 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import HoverButton from "@/components/ui/HoverButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, AlertCircle, User, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import {
+  AlertCircle,
+  User,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth.jsx";
 import { useToast } from "@/hooks/use-toast";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { PointerHighlight } from "@/components/ui/pointer-highlight";
+import FullPageLoader from '@/components/ui/FullPageLoader';
 
 const RegisterPage = memo(() => {
   const { register, googleLogin, isAuthenticated } = useAuth();
@@ -42,15 +54,24 @@ const RegisterPage = memo(() => {
     if (isAuthenticated) navigate("/dashboard", { replace: true });
   }, [isAuthenticated, navigate]);
 
+  // Initialize AOS for this page matching the login page behavior
+  useEffect(() => {
+    AOS.init({ once: false, mirror: true, duration: 450, offset: 120 });
+    AOS.refresh();
+  }, []);
+
   // Handle form input changes
-  const handleInputChange = useCallback((e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear specific field error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }));
-    }
-  }, [errors]);
+  const handleInputChange = useCallback(
+    (e) => {
+      const { name, value } = e.target;
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      // Clear specific field error when user starts typing
+      if (errors[name]) {
+        setErrors((prev) => ({ ...prev, [name]: "" }));
+      }
+    },
+    [errors]
+  );
 
   // Validate form
   const validateForm = useCallback(() => {
@@ -82,56 +103,57 @@ const RegisterPage = memo(() => {
   }, [formData]);
 
   // Handle form submission
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-    setErrors({});
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      setErrors({});
 
-    const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
-    }
+      const validationErrors = validateForm();
+      if (Object.keys(validationErrors).length > 0) {
+        setErrors(validationErrors);
+        return;
+      }
 
-    setLoading(true);
-    toast({
-      title: "Creating Account...",
-      description: "Please wait while we create your account",
-    });
+      setLoading(true);
 
-    try {
-      const result = await register(formData.username, formData.email, formData.password);
-      if (result.success) {
-        toast({
-          title: "Success!",
-          description: "Account created successfully. You can now sign in.",
-          variant: "purple",
-          className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
-        });
-        navigate("/login", { replace: true });
-      } else {
-        const msg = result.error || "Registration failed. Please try again.";
+      try {
+        const result = await register(
+          formData.username,
+          formData.email,
+          formData.password
+        );
+        if (result.success) {
+          toast({
+            title: "Success!",
+            description: "Account created successfully. You can now sign in.",
+            variant: "success",
+          });
+          // Delay navigation briefly so the user can see the success toast
+          setTimeout(() => navigate("/login", { replace: true }), 700);
+        } else {
+          const msg = result.error || "Registration failed. Please try again.";
+          setErrors({ general: msg });
+          toast({
+            title: "Registration Failed",
+            description: msg,
+            variant: "warning",
+          });
+        }
+      } catch (error) {
+        console.error("Registration error:", error);
+        const msg = "An error occurred during registration. Please try again.";
         setErrors({ general: msg });
         toast({
-          title: "Registration Failed",
+          title: "Registration Error",
           description: msg,
-          variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          variant: "warning",
         });
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Registration error:", error);
-      const msg = "An error occurred during registration. Please try again.";
-      setErrors({ general: msg });
-      toast({
-        title: "Registration Error",
-        description: msg,
-        variant: "destructive",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [formData, register, navigate, toast, validateForm]);
+    },
+    [formData, register, navigate, toast, validateForm]
+  );
 
   // Google Sign-In handler (same as login page)
   const handleCredentialResponse = useCallback(
@@ -139,28 +161,23 @@ const RegisterPage = memo(() => {
       if (!response?.credential) return;
       setGoogleLoading(true);
       setErrors({});
-      toast({
-        title: "Authenticating...",
-        description: "Verifying Google credential",
-      });
       try {
         const result = await googleLogin(response.credential);
         if (result.success) {
-          toast({ 
-            title: "Success", 
+          toast({
+            title: "Success",
             description: "Registration successful via Google",
-            variant: "purple",
-            className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+            variant: "success",
           });
-          navigate("/dashboard", { replace: true });
+          // Delay navigation briefly so the user can see the success toast
+          setTimeout(() => navigate("/dashboard", { replace: true }), 700);
         } else {
           const msg = result.error || "Google authentication failed";
           setErrors({ general: msg });
           toast({
             title: "Authentication Failed",
             description: msg,
-            variant: "destructive",
-            className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+            variant: "warning",
           });
         }
       } catch (e) {
@@ -170,8 +187,7 @@ const RegisterPage = memo(() => {
         toast({
           title: "Authentication Error",
           description: msg,
-          variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          variant: "warning",
         });
       } finally {
         setGoogleLoading(false);
@@ -206,7 +222,6 @@ const RegisterPage = memo(() => {
           title: "Init Error",
           description: "Failed to initialize Google Sign-In",
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       }
     };
@@ -229,7 +244,6 @@ const RegisterPage = memo(() => {
           title: "Script Error",
           description: "Failed to load Google Sign-In script",
           variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       document.head.appendChild(script);
     } else {
@@ -240,20 +254,9 @@ const RegisterPage = memo(() => {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Top bar (Back to login) */}
-      <div className="mx-auto max-w-6xl px-8 pt-6 flex items-center justify-between">
-        <Link
-          to="/login"
-          className="inline-flex items-center text-sm text-slate-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded cursor-pointer"
-          aria-label="Back to login"
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to login
-        </Link>
-      </div>
-
+      {(loading || googleLoading) && <FullPageLoader text={loading ? 'Creating account…' : 'Processing…'} />}
       {/* Main content */}
-      <div className="mx-auto flex min-h-[calc(100vh-64px)] max-w-6xl items-center justify-center px-8 py-6">
+      <div className="mx-auto flex min-h-[calc(100vh-64px)] items-center justify-center px-8 py-6">
         <div className="flex w-full items-center gap-8 lg:gap-16">
           {/* LEFT: Hero content (hide on small screens) */}
           <div className="hidden md:flex flex-1 items-center justify-center relative overflow-hidden min-h-[400px]">
@@ -269,8 +272,10 @@ const RegisterPage = memo(() => {
             <div className="p-8 lg:p-12 relative z-10">
               <div className="flex flex-col justify-center lg:justify-start space-y-4 sm:space-y-6 lg:space-y-8">
                 <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-serif font-bold leading-[0.95] text-slate-900">
-                  Join Planoria and Start Creating
-                  <span className="align-super">^</span>
+                  <PointerHighlight>
+                    Join Planoria and Start Creating
+                    <span className="align-super">^</span>
+                  </PointerHighlight>
                 </h1>
               </div>
             </div>
@@ -278,7 +283,11 @@ const RegisterPage = memo(() => {
 
           {/* RIGHT: Form */}
           <div className="flex-1">
-            <Card className="w-full max-w-md mx-auto">
+            <Card
+              className="w-full max-w-md mx-auto"
+              data-aos="zoom-in"
+              data-aos-delay="80"
+            >
               <CardHeader className="space-y-2">
                 <CardTitle className="text-center text-2xl md:text-3xl">
                   Create Account
@@ -300,11 +309,23 @@ const RegisterPage = memo(() => {
                 {/* Google Sign-Up */}
                 <div className="mb-6">
                   <div className="flex justify-center">
-                    <div id="google-btn-register" className="flex justify-center" />
+                    <div
+                      id="google-btn-register"
+                      className="flex justify-center"
+                    />
                   </div>
                   {googleLoading && (
-                    <div className="mt-2 text-center text-sm text-slate-500">
-                      Processing Google signup...
+                    <div
+                      className="mt-2 text-center text-sm text-slate-500 flex items-center justify-center gap-2"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <LoadingSpinner
+                        sizeVariant="sm"
+                        speed="0.9s"
+                        thickness={3}
+                      />
+                      <span>Processing Google signup...</span>
                     </div>
                   )}
                 </div>
@@ -315,7 +336,9 @@ const RegisterPage = memo(() => {
                     <span className="w-full border-t" />
                   </div>
                   <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white px-2 text-slate-500">Or continue with email</span>
+                    <span className="bg-white px-2 text-slate-500">
+                      Or continue with email
+                    </span>
                   </div>
                 </div>
 
@@ -335,7 +358,9 @@ const RegisterPage = memo(() => {
                         placeholder="Enter your username"
                         value={formData.username}
                         onChange={handleInputChange}
-                        className={`pl-10 ${errors.username ? 'border-red-500' : ''}`}
+                        className={`pl-10 ${
+                          errors.username ? "border-red-500" : ""
+                        }`}
                         disabled={loading}
                       />
                     </div>
@@ -358,7 +383,9 @@ const RegisterPage = memo(() => {
                         placeholder="Enter your email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
+                        className={`pl-10 ${
+                          errors.email ? "border-red-500" : ""
+                        }`}
                         disabled={loading}
                       />
                     </div>
@@ -381,7 +408,9 @@ const RegisterPage = memo(() => {
                         placeholder="Enter your password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className={`pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
+                        className={`pl-10 pr-10 ${
+                          errors.password ? "border-red-500" : ""
+                        }`}
                         disabled={loading}
                       />
                       <button
@@ -404,7 +433,10 @@ const RegisterPage = memo(() => {
 
                   {/* Confirm Password Field */}
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-sm font-medium">
+                    <Label
+                      htmlFor="confirmPassword"
+                      className="text-sm font-medium"
+                    >
                       Confirm Password
                     </Label>
                     <div className="relative">
@@ -416,12 +448,16 @@ const RegisterPage = memo(() => {
                         placeholder="Confirm your password"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
-                        className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                        className={`pl-10 pr-10 ${
+                          errors.confirmPassword ? "border-red-500" : ""
+                        }`}
                         disabled={loading}
                       />
                       <button
                         type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
                         className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 focus:outline-none"
                         tabIndex={-1}
                       >
@@ -433,18 +469,33 @@ const RegisterPage = memo(() => {
                       </button>
                     </div>
                     {errors.confirmPassword && (
-                      <p className="text-sm text-red-600">{errors.confirmPassword}</p>
+                      <p className="text-sm text-red-600">
+                        {errors.confirmPassword}
+                      </p>
                     )}
                   </div>
 
                   {/* Submit Button */}
-                  <Button
+                  <HoverButton
                     type="submit"
                     className="w-full"
                     disabled={loading || googleLoading}
+                    aria-busy={loading}
+                    aria-disabled={loading || googleLoading}
                   >
-                    {loading ? "Creating Account..." : "Create Account"}
-                  </Button>
+                    {loading ? (
+                      <>
+                        <LoadingSpinner
+                          sizeVariant="sm"
+                          speed="0.9s"
+                          thickness={3}
+                        />
+                        <span className="sr-only">Creating Account</span>
+                      </>
+                    ) : (
+                      "Create Account"
+                    )}
+                  </HoverButton>
                 </form>
 
                 {/* Footer Links */}

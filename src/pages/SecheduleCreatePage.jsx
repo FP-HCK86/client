@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import api from "../api/client";
+import api from "@/api/client";
+import FullPageLoader from "@/components/ui/FullPageLoader";
 
 export default function ScheduleCreatePage() {
   const [videos, setVideos] = useState([]);
@@ -128,12 +129,10 @@ export default function ScheduleCreatePage() {
       } catch (e) {
         if (!mounted) return;
         toast({
-          title: "Error",
+          title: "Failed to load videos",
           description:
-            e?.response?.data?.error || "Gagal memuat Video Library.",
+            e?.response?.data?.error || "Failed to load Video Library.",
           variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -187,11 +186,9 @@ export default function ScheduleCreatePage() {
 
       const { data } = await api.post("/schedules", body);
       toast({
-        title: "Success!",
-        description: `✔ ${data?.message || "Schedule created"}`,
-        variant: "default",
-        className:
-          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        title: "Schedule created",
+        description: "Schedule created successfully.",
+        variant: "success",
       });
       if (data?.late?.postId) {
         setLateInfo({ postId: data.late.postId, mode: data.late.mode });
@@ -202,7 +199,7 @@ export default function ScheduleCreatePage() {
       }
       // window.location.href = `/schedule/${data?.schedule?._id}`;
     } catch (e) {
-      const errMsg = e?.response?.data?.error || "Gagal membuat schedule";
+      const errMsg = "Failed to create schedule";
       const redirectTo = e?.response?.data?.redirectTo || null;
       // If backend signals redirectTo (upgrade required), show only the upgrade modal
       // and do not display the destructive toast to avoid duplicate alerts.
@@ -210,11 +207,9 @@ export default function ScheduleCreatePage() {
         setUpgradeRedirect(redirectTo);
       } else {
         toast({
-          title: "Error",
+          title: "Failed to create schedule",
           description: errMsg,
           variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       }
     } finally {
@@ -234,7 +229,7 @@ export default function ScheduleCreatePage() {
             Create Schedule
           </h1>
           <p className="text-slate-600 text-sm mt-1">
-            Buat jadwal posting baru dari Video Library.
+            Create a new scheduled post from your Video Library.
           </p>
         </div>
 
@@ -243,22 +238,22 @@ export default function ScheduleCreatePage() {
           <Card className="lg:col-span-1 overflow-hidden text-center">
             <CardHeader className="text-center">
               <CardTitle className="text-lg flex items-center justify-center gap-2">
-                <Video className="h-5 w-5" /> Pilih & Preview Video
+                <Video className="h-5 w-5" /> Pick & Preview Video
               </CardTitle>
               <CardDescription className="text-center">
-                Ambil dari Video Library kamu.
+                Choose from your Video Library.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-sm text-slate-600">Memuat video…</div>
+                <div className="text-sm text-slate-600">Loading videos…</div>
               ) : !selectedVideo ? (
                 <div className="flex items-center justify-center">
                   <HoverButton
                     onClick={() => setPickerOpen(true)}
                     className="touch-manipulation cursor-pointer"
                   >
-                    Pilih Video
+                    Pick Video
                   </HoverButton>
                 </div>
               ) : (
@@ -273,9 +268,7 @@ export default function ScheduleCreatePage() {
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400">
                         <Video className="h-8 w-8" />
-                        <span className="text-xs">
-                          (Preview tidak tersedia)
-                        </span>
+                        <span className="text-xs">(Preview not available)</span>
                       </div>
                     )}
                     <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs text-white">
@@ -285,10 +278,10 @@ export default function ScheduleCreatePage() {
 
                   <div className="text-center w-full max-w-sm">
                     <div className="text-sm font-medium leading-5">
-                      {selectedVideo.title || "Tanpa judul"}
+                      {selectedVideo.title || "Untitled"}
                     </div>
                     <div className="mt-1 text-xs text-slate-600">
-                      Diunggah {fmtDate(selectedVideo.createdAt)} • Durasi{" "}
+                      Uploaded {fmtDate(selectedVideo.createdAt)} • Duration{" "}
                       {fmtDuration(vDur)}
                     </div>
                   </div>
@@ -298,7 +291,7 @@ export default function ScheduleCreatePage() {
                       onClick={() => setPickerOpen(true)}
                       className="px-3 py-1 text-sm cursor-pointer"
                     >
-                      Ganti Video
+                      Change Video
                     </HoverButton>
                     <Button
                       variant="outline"
@@ -309,7 +302,7 @@ export default function ScheduleCreatePage() {
                       }}
                       className="w-32 h-10 lg:h-12 border border-black cursor-pointer"
                     >
-                      Hapus
+                      Remove
                     </Button>
                   </div>
                 </div>
@@ -321,10 +314,10 @@ export default function ScheduleCreatePage() {
           <Card className="lg:col-span-2">
             <CardHeader className="text-center">
               <CardTitle className="text-lg flex items-center justify-center gap-2">
-                <CalendarDays className="h-5 w-5" /> Detail Jadwal
+                <CalendarDays className="h-5 w-5" /> Schedule Details
               </CardTitle>
               <CardDescription className="text-center">
-                Atur platform, caption/hashtag, tanggal & jam.
+                Set platform, caption/hashtags, date & time.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
@@ -448,7 +441,7 @@ export default function ScheduleCreatePage() {
                 onClick={() => window.history.back()}
                 className="w-32 h-10 lg:h-12 border border-black cursor-pointer"
               >
-                Batal
+                Cancel
               </Button>
               <HoverButton
                 onClick={onSubmit}
@@ -465,7 +458,7 @@ export default function ScheduleCreatePage() {
                 }
                 className="w-32 cursor-pointer"
               >
-                {submitting ? "Menyimpan…" : "Simpan"}
+                {submitting ? "Saving…" : "Save"}
               </HoverButton>
             </CardFooter>
           </Card>
@@ -482,10 +475,10 @@ export default function ScheduleCreatePage() {
             <div className="rounded-lg bg-gradient-to-r from-red-500 via-red-400 to-red-300 p-4 text-white shadow-lg">
               <div className="flex items-start gap-4">
                 <div className="flex-1">
-                  <div className="font-semibold">Batas tercapai</div>
+                  <div className="font-semibold">Limit reached</div>
                   <div className="text-sm">
-                    Anda telah mencapai batas 2 schedule. Upgrade untuk akses
-                    unlimited.
+                    You have reached the limit of 2 schedules. Upgrade for
+                    unlimited access.
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -497,13 +490,13 @@ export default function ScheduleCreatePage() {
                     disabled={upgradeProcessing}
                     className="rounded-md bg-white px-3 py-1 text-sm font-medium text-red-600"
                   >
-                    {upgradeProcessing ? "Memproses..." : "Upgrade"}
+                    {upgradeProcessing ? "Processing..." : "Upgrade"}
                   </button>
                   <button
                     onClick={() => setUpgradeRedirect(null)}
                     className="rounded-md bg-white/10 px-2 py-1 text-sm text-white"
                   >
-                    Tutup
+                    Close
                   </button>
                 </div>
               </div>
@@ -521,7 +514,7 @@ export default function ScheduleCreatePage() {
           />
           <div className="relative z-10 h-screen w-screen bg-white shadow-xl flex flex-col">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b p-4 bg-white">
-              <div className="text-sm font-medium">Pilih Video</div>
+              <div className="text-sm font-medium">Pick Video</div>
               <button
                 className="rounded-full p-1 hover:bg-slate-100"
                 onClick={() => setPickerOpen(false)}
@@ -534,7 +527,7 @@ export default function ScheduleCreatePage() {
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
                   <input
-                    placeholder="Cari judul video..."
+                    placeholder="Search video title..."
                     readOnly
                     className="w-full rounded-xl border p-2 pl-8 text-sm"
                   />
@@ -564,7 +557,7 @@ export default function ScheduleCreatePage() {
                     </div>
                     <div className="p-3">
                       <div className="text-sm font-medium leading-5 line-clamp-2">
-                        {v.title || "Tanpa judul"}
+                        {v.title || "Untitled"}
                       </div>
                       <div className="mt-1 text-xs text-slate-600">
                         {fmtDate(v.createdAt)}
@@ -574,14 +567,14 @@ export default function ScheduleCreatePage() {
                           onClick={() => onPickVideo(v)}
                           className="px-3 py-1 text-sm h-8 cursor-pointer"
                         >
-                          Pilih
+                          Pick
                         </HoverButton>
                         {v._id === selectedVideo?._id && (
                           <Badge
                             variant="secondary"
                             className="flex items-center gap-1"
                           >
-                            <Check className="h-3.5 w-3.5" /> Dipilih
+                            <Check className="h-3.5 w-3.5" /> Selected
                           </Badge>
                         )}
                       </div>
@@ -589,13 +582,13 @@ export default function ScheduleCreatePage() {
                   </div>
                 ))}
                 {!videos.length && (
-                  <div className="text-sm text-slate-600">Tidak ada video.</div>
+                  <div className="text-sm text-slate-600">No videos found.</div>
                 )}
               </div>
             </div>
             <div className="border-t p-4 text-right">
               <Button variant="secondary" onClick={() => setPickerOpen(false)}>
-                Tutup
+                Close
               </Button>
             </div>
           </div>

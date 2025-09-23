@@ -223,8 +223,6 @@ export default function AccountSettingsPage() {
             (error?.response?.data && error.response.data.message) ||
             "Failed to load profile data",
           variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       } finally {
         setLoading(false);
@@ -241,13 +239,11 @@ export default function AccountSettingsPage() {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: "Invalid File",
-        description: "Please select an image file",
-        variant: "destructive",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-      });
+        toast({
+          title: "Invalid File",
+          description: "Please select an image file",
+          variant: "destructive",
+        });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -255,8 +251,6 @@ export default function AccountSettingsPage() {
         title: "File Too Large",
         description: "Please select an image smaller than 5MB",
         variant: "destructive",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
       return;
     }
@@ -277,8 +271,6 @@ export default function AccountSettingsPage() {
           title: "Success!",
           description: "Profile picture updated successfully",
           variant: "purple",
-          className:
-            "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
         });
       }
     } catch (error) {
@@ -288,8 +280,6 @@ export default function AccountSettingsPage() {
           (error?.response?.data && error.response.data.message) ||
           "Failed to upload profile picture",
         variant: "destructive",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
     } finally {
       setUploading(false);
@@ -327,8 +317,6 @@ export default function AccountSettingsPage() {
           title: "Success!",
           description: "Username updated successfully",
           variant: "purple",
-          className:
-            "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
         });
       }
 
@@ -340,8 +328,6 @@ export default function AccountSettingsPage() {
         description:
           error.response?.data?.message || "Failed to update username",
         variant: "destructive",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
       });
     } finally {
       setUpdating(false);

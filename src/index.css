@@ -56,6 +56,8 @@
   --btn-orange: var(--hover-btn-orange);
   /* Button border token */
   --btn-border: #000000;
+  /* Spinner color token (defaults to black) */
+  --spinner-color: #000000;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -214,4 +216,30 @@
     background-color: var(--btn-green) !important;
     transform: translateY(-1px);
   }
+
+  /* Custom conic-gradient ring spinner (reusable shadcn-style helper) */
+  .custom-spinner {
+    width: var(--spinner-size, 36px);
+    height: var(--spinner-size, 36px);
+    border-radius: 50%;
+    /* Spinner uses a single color (uses --spinner-color) so it's rendered black by default */
+      background: conic-gradient(var(--spinner-color), var(--spinner-color), var(--spinner-color), var(--spinner-color));
+    /* Create a hole in the middle to form a ring using masks */
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--spinner-thickness, 6px)), black calc(100% - var(--spinner-thickness, 6px)));
+    mask: radial-gradient(farthest-side, transparent calc(100% - var(--spinner-thickness, 6px)), black calc(100% - var(--spinner-thickness, 6px)));
+    animation: spinner-rotate var(--spinner-speed, 1s) linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+
+  @keyframes spinner-rotate {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+
+  /* Convenience size helpers */
+  .custom-spinner-sm { --spinner-size: 18px; --spinner-thickness: 3px; }
+  .custom-spinner-md { --spinner-size: 36px; --spinner-thickness: 6px; }
+  .custom-spinner-lg { --spinner-size: 48px; --spinner-thickness: 8px; }
 }

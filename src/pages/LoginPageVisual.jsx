@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, memo } from "react";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -14,11 +14,13 @@ import {
 import HoverButton from "@/components/ui/HoverButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, AlertCircle, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth.jsx";
 import { useToast } from "@/hooks/use-toast";
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { PointerHighlight } from "@/components/ui/pointer-highlight";
+import FullPageLoader from '@/components/ui/FullPageLoader';
 
 const LoginPage = memo(() => {
   const { login, googleLogin, isAuthenticated } = useAuth();
@@ -85,45 +87,23 @@ const LoginPage = memo(() => {
       }
 
       setLoading(true);
-      toast({
-        title: "Signing In...",
-        description: "Please wait while we sign you in",
-      });
 
       try {
         const result = await login(formData.email, formData.password);
         if (result.success) {
-          toast({
-            title: "Success!",
-            description: "Signed in successfully",
-            variant: "purple",
-            className:
-              "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
-          });
+          toast({ title: 'Success!', description: 'Signed in successfully', variant: 'success' });
           navigate("/dashboard", { replace: true });
         } else {
           const msg =
             result.error || "Login failed. Please check your credentials.";
           setErrors({ general: msg });
-          toast({
-            title: "Login Failed",
-            description: msg,
-            variant: "destructive",
-            className:
-              "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-          });
+          toast({ title: 'Login Failed', description: msg, variant: 'warning' });
         }
       } catch (error) {
         console.error("Login error:", error);
         const msg = "An error occurred during login. Please try again.";
         setErrors({ general: msg });
-        toast({
-          title: "Login Error",
-          description: msg,
-          variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-        });
+        toast({ title: 'Login Error', description: msg, variant: 'warning' });
       } finally {
         setLoading(false);
       }
@@ -136,43 +116,21 @@ const LoginPage = memo(() => {
       if (!response?.credential) return;
       setGoogleLoading(true);
       setErrors({});
-      toast({
-        title: "Authenticating...",
-        description: "Verifying Google credential",
-      });
       try {
         const result = await googleLogin(response.credential);
         if (result.success) {
-          toast({
-            title: "Success",
-            description: "Login successful",
-            variant: "purple",
-            className:
-              "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
-          });
+          toast({ title: 'Success', description: 'Login successful', variant: 'success' });
           navigate("/dashboard", { replace: true });
         } else {
           const msg = result.error || "Google authentication failed";
           setErrors({ general: msg });
-          toast({
-            title: "Authentication Failed",
-            description: msg,
-            variant: "destructive",
-            className:
-              "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-          });
+          toast({ title: 'Authentication Failed', description: msg, variant: 'warning' });
         }
       } catch (e) {
         console.error("Google Sign-In error", e);
         const msg = "Google authentication failed. Please try again.";
         setErrors({ general: msg });
-        toast({
-          title: "Authentication Error",
-          description: msg,
-          variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-        });
+        toast({ title: 'Authentication Error', description: msg, variant: 'warning' });
       } finally {
         setGoogleLoading(false);
       }
@@ -205,8 +163,6 @@ const LoginPage = memo(() => {
           title: "Init Error",
           description: "Failed to initialize Google Sign-In",
           variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
         });
       }
     };
@@ -225,13 +181,7 @@ const LoginPage = memo(() => {
       script.defer = true;
       script.onload = initialize;
       script.onerror = () =>
-        toast({
-          title: "Script Error",
-          description: "Failed to load Google Sign-In script",
-          variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-        });
+        toast({ title: 'Script Error', description: 'Failed to load Google Sign-In script', variant: 'warning' });
       document.head.appendChild(script);
     } else {
       const t = setTimeout(initialize, 500);
@@ -247,17 +197,9 @@ const LoginPage = memo(() => {
 
   return (
     <div className="h-screen bg-white">
+      {(loading || googleLoading) && <FullPageLoader text={loading ? 'Signing in…' : 'Processing…'} />}
       {/* Top bar (Back / Sign up) */}
-      <div className="mx-auto px-8 pt-6 flex items-center justify-between">
-        {/* <Link
-          to="/"
-          className="inline-flex items-center text-sm text-slate-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded cursor-pointer"
-          aria-label="Back to home"
-        >
-          <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to home
-        </Link> */}
-      </div>
+      <div className="mx-auto px-8 pt-6 flex items-center justify-between" />
 
       {/* Main content */}
       <div className="mx-auto flex items-center justify-center h-screen">
@@ -299,9 +241,6 @@ const LoginPage = memo(() => {
                 </CardTitle>
                 <CardDescription className="text-center">
                   Sign in with Google to access your account.
-                  <div className="flex justify-center mt-4">
-                    <div id="google-btn" className="flex justify-center" />
-                  </div>
                 </CardDescription>
               </CardHeader>
 
@@ -320,8 +259,9 @@ const LoginPage = memo(() => {
                     <div id="google-btn" className="flex justify-center" />
                   </div>
                   {googleLoading && (
-                    <div className="mt-2 text-center text-sm text-slate-500">
-                      Processing Google login...
+                    <div className="mt-2 text-center text-sm text-slate-500 flex items-center justify-center gap-2">
+                      <LoadingSpinner sizeVariant="sm" speed="0.9s" thickness={3} />
+                      <span>Processing Google login...</span>
                     </div>
                   )}
                 </div>
@@ -405,10 +345,17 @@ const LoginPage = memo(() => {
                   {/* Submit Button (HoverButton) */}
                   <HoverButton
                     type="submit"
-                    className="w-full"
+                    className="w-full flex items-center justify-center gap-2"
                     disabled={loading || googleLoading}
                   >
-                    {loading ? "Signing In..." : "Sign In"}
+                    {loading ? (
+                      <>
+                        <LoadingSpinner sizeVariant="sm" speed="0.9s" thickness={3} />
+                        <span>Signing In...</span>
+                      </>
+                    ) : (
+                      "Sign In"
+                    )}
                   </HoverButton>
                 </form>
 
