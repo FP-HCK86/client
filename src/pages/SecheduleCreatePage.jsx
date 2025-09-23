@@ -204,14 +204,19 @@ export default function ScheduleCreatePage() {
     } catch (e) {
       const errMsg = e?.response?.data?.error || "Gagal membuat schedule";
       const redirectTo = e?.response?.data?.redirectTo || null;
-      if (redirectTo) setUpgradeRedirect(redirectTo);
-      toast({
-        title: "Error",
-        description: errMsg,
-        variant: "destructive",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-      });
+      // If backend signals redirectTo (upgrade required), show only the upgrade modal
+      // and do not display the destructive toast to avoid duplicate alerts.
+      if (redirectTo) {
+        setUpgradeRedirect(redirectTo);
+      } else {
+        toast({
+          title: "Error",
+          description: errMsg,
+          variant: "destructive",
+          className:
+            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -477,7 +482,7 @@ export default function ScheduleCreatePage() {
             <div className="rounded-lg bg-gradient-to-r from-red-500 via-red-400 to-red-300 p-4 text-white shadow-lg">
               <div className="flex items-start gap-4">
                 <div className="flex-1">
-                  <div className="font-semibold">Limit reached</div>
+                  <div className="font-semibold">Batas tercapai</div>
                   <div className="text-sm">
                     Anda telah mencapai batas 3 schedule. Upgrade untuk akses
                     unlimited.
@@ -498,7 +503,7 @@ export default function ScheduleCreatePage() {
                     onClick={() => setUpgradeRedirect(null)}
                     className="rounded-md bg-white/10 px-2 py-1 text-sm text-white"
                   >
-                    Close
+                    Tutup
                   </button>
                 </div>
               </div>
