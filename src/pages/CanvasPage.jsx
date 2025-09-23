@@ -1784,37 +1784,39 @@ export default function CanvasPage() {
                           <Video className="h-4 w-4" />
                           <span className="font-medium">Analisis Video dengan AI</span>
                         </div>
-                        <Button 
-                          onClick={() => {
-                            if (selectedVideo) {
-                              // Langsung mulai analisis video yang sudah dipilih
-                              startVideoAnalysis(selectedVideo);
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            onClick={() => {
+                              if (selectedVideo) {
+                                // Langsung mulai analisis video yang sudah dipilih
+                                startVideoAnalysis(selectedVideo);
+                              }
+                              // Jika belum ada video dipilih, tombol tidak melakukan apa-apa (disabled)
+                            }}
+                            disabled={!selectedVideo}
+                            className={selectedVideo 
+                              ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                              : "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300"
                             }
-                            // Jika belum ada video dipilih, tombol tidak melakukan apa-apa (disabled)
-                          }}
-                          disabled={!selectedVideo}
-                          className={selectedVideo 
-                            ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                            : "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300"
-                          }
-                          size="sm"
-                        >
-                          <Sparkles className={`mr-1 h-3 w-3 ${selectedVideo ? 'text-white' : 'text-gray-400'}`} />
-                          Start Analysis
-                        </Button>
-                        
-                        {/* Tombol Hapus Analisis AI */}
-                        {selectedVideo && selectedVideo.hasAIAnalysis && (
-                          <Button
-                            onClick={() => deleteVideoAnalysis(selectedVideo)}
-                            variant="outline"
                             size="sm"
-                            className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
                           >
-                            <Trash2 className="mr-1 h-3 w-3" />
-                            Hapus Analisis
+                            <Sparkles className={`mr-1 h-3 w-3 ${selectedVideo ? 'text-white' : 'text-gray-400'}`} />
+                            Start Analysis
                           </Button>
-                        )}
+                          
+                          {/* Tombol Hapus Analisis AI */}
+                          {selectedVideo && selectedVideo.hasAIAnalysis && (
+                            <Button
+                              onClick={() => deleteVideoAnalysis(selectedVideo)}
+                              variant="outline"
+                              size="sm"
+                              className="border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                            >
+                              <Trash2 className="mr-1 h-3 w-3" />
+                              Hapus Analisis
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <div ref={chatContainerRef} className="flex-1 min-h-[300px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3">
                         <div className="text-sm text-slate-600">
