@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import {
-  UploadCloud,
   Film,
   Sparkles,
   Save,
@@ -949,7 +948,11 @@ export default function CanvasPage() {
             <Button
               variant={canvasMode === "create" ? "default" : "outline"}
               onClick={() => setCanvasMode("create")}
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 ${
+                canvasMode === "create" 
+                  ? "bg-[#583377] hover:bg-[#583377]/90 text-white border-[#583377]" 
+                  : "hover:bg-[#583377]/10 hover:text-[#583377] hover:border-[#583377]"
+              }`}
             >
               <Sparkles className="h-4 w-4" />
               Buat Konten dari Awal
@@ -957,7 +960,11 @@ export default function CanvasPage() {
             <Button
               variant={canvasMode === "discuss" ? "default" : "outline"}
               onClick={() => setCanvasMode("discuss")}
-              className="flex items-center gap-2"
+              className={`flex items-center gap-2 ${
+                canvasMode === "discuss" 
+                  ? "bg-[#583377] hover:bg-[#583377]/90 text-white border-[#583377]" 
+                  : "hover:bg-[#583377]/10 hover:text-[#583377] hover:border-[#583377]"
+              }`}
             >
               <Video className="h-4 w-4" />
               Diskusi Konten yang Ada
@@ -969,7 +976,7 @@ export default function CanvasPage() {
           {canvasMode === "create" && (
             <>
               {/* Mode 1: Buat Konten dari Awal - Chat Interface */}
-              <Card className="lg:col-span-1">
+              <Card className="lg:col-span-1 flex flex-col h-full">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -993,8 +1000,8 @@ export default function CanvasPage() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="flex flex-col h-full">
+                  <div className="flex flex-col h-full space-y-4">
                     {/* Chat History List */}
                     {showChatHistory && (
                       <div className="rounded-xl border bg-white p-3 max-h-[120px] overflow-y-auto">
@@ -1046,7 +1053,7 @@ export default function CanvasPage() {
                       </div>
                     )}
 
-                    <div className="h-[300px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto">
+                    <div className="flex-1 min-h-[400px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto">
                       <div className="text-sm space-y-3">
                         {chatMessages.map((message, index) => (
                           <div 
@@ -1313,22 +1320,10 @@ export default function CanvasPage() {
                         disabled={isLoading || showPersonaSelection || showCreatePersonaForm}
                         className="flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:opacity-50"
                       />
-                      {chatMessages.length > 1 && (
-                        <Button 
-                          variant="outline"
-                          size="sm" 
-                          className="h-10 w-10 p-0"
-                          onClick={handleSaveCurrentChat}
-                          title="Save Chat"
-                        >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
-                          </svg>
-                        </Button>
-                      )}
+
                       <Button 
                         size="sm" 
-                        className="h-10 w-10 p-0"
+                        className="h-10 w-10 p-0 bg-[#583377] hover:bg-[#4a2b65] text-white"
                         onClick={handleSendMessage}
                         disabled={isLoading || !currentMessage.trim() || showPersonaSelection || showCreatePersonaForm}
                       >
@@ -1678,6 +1673,7 @@ export default function CanvasPage() {
                       <Button 
                         disabled={!generatedContent || chatMessages.length <= 1} 
                         size="sm"
+                        className="bg-[#583377] hover:bg-[#4a2b65] text-white"
                         onClick={handleSaveCurrentChat}
                       >
                         <Save className="h-4 w-4 mr-2" />
@@ -1693,7 +1689,7 @@ export default function CanvasPage() {
           {canvasMode === "discuss" && (
             <>
               {/* Mode 2: Diskusi Konten yang Sudah Ada - Video List */}
-              <Card className="lg:col-span-1">
+              <Card className="lg:col-span-1 flex flex-col h-full">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <Film className="h-5 w-5" /> Pilih Video
@@ -1702,8 +1698,8 @@ export default function CanvasPage() {
                     Pilih video dari library untuk didiskusikan dengan AI
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="flex flex-col h-full">
+                  <div className="flex flex-col h-full space-y-4">
                     {/* Video Selection */}
                     <div className="max-h-80 overflow-y-auto space-y-2">
                       {loadingVideos ? (
@@ -1782,7 +1778,7 @@ export default function CanvasPage() {
                     )}
 
                     {/* Video Analysis Section */}
-                    <div className="mt-6">
+                    <div className="mt-6 flex flex-col flex-1">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <Video className="h-4 w-4" />
@@ -1820,7 +1816,7 @@ export default function CanvasPage() {
                           </Button>
                         )}
                       </div>
-                      <div ref={chatContainerRef} className="h-[200px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3">
+                      <div ref={chatContainerRef} className="flex-1 min-h-[300px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3">
                         <div className="text-sm text-slate-600">
                           {/* Initial AI Message */}
                           {videoChatMessages.length === 0 && (
@@ -1943,7 +1939,7 @@ export default function CanvasPage() {
                         />
                         <Button 
                           size="sm" 
-                          className="h-10 w-10 p-0" 
+                          className="h-10 w-10 p-0 bg-[#583377] hover:bg-[#4a2b65] text-white" 
                           disabled={!selectedVideo || !selectedVideo.hasAIAnalysis || isVideoChatLoading}
                           onClick={sendVideoChatMessage}
                         >
@@ -2045,44 +2041,67 @@ export default function CanvasPage() {
                         </div>
                       ) : selectedVideo && selectedVideo.transcript_status === 'completed' ? (
                         // Video has transcript but no AI analysis yet
-                        <div className="text-center space-y-3">
-                          <div className="w-16 h-16 mx-auto bg-orange-100 rounded-full flex items-center justify-center">
-                            <Sparkles className="h-8 w-8 text-orange-500" />
-                          </div>
-                          <div>
-                            <h3 className="font-medium text-slate-600 mb-2">Transkrip Tersedia</h3>
-                            <p className="text-sm text-slate-500 max-w-md">
-                              Video sudah memiliki transkrip, tapi belum dianalisis oleh AI. 
-                              Klik "Start Analysis" untuk mendapatkan saran perbaikan.
-                            </p>
+                        <div className="flex items-center justify-center h-full min-h-[200px]">
+                          <div className="text-center space-y-4">
+                            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-orange-100 to-yellow-100 rounded-full flex items-center justify-center shadow-sm">
+                              <Sparkles className="h-10 w-10 text-orange-500" />
+                            </div>
+                            <div className="space-y-2">
+                              <h3 className="font-semibold text-slate-700 text-lg">Transkrip Tersedia</h3>
+                              <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+                                Video sudah memiliki transkrip dan siap untuk dianalisis oleh AI.
+                              </p>
+                              <div className="mt-4 px-4 py-3 bg-orange-50 rounded-lg border border-orange-200">
+                                <p className="text-sm text-orange-700 font-medium mb-1">
+                                  📝 Transkrip siap!
+                                </p>
+                                <p className="text-xs text-orange-600">
+                                  Klik "Start Analysis" untuk mendapatkan analisis dan saran perbaikan dari AI
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ) : selectedVideo ? (
                         // Video selected but no analysis
-                        <div className="text-center space-y-3">
-                          <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-                            <Sparkles className="h-8 w-8 text-blue-500" />
-                          </div>
-                          <div>
-                            <h3 className="font-medium text-slate-600 mb-2">Siap untuk Analisis</h3>
-                            <p className="text-sm text-slate-500 max-w-md">
-                              Klik "Start Analysis" untuk menganalisis video "{selectedVideo.title || 'Tanpa judul'}" 
-                              dan mendapatkan saran perbaikan dari AI.
-                            </p>
+                        <div className="flex items-center justify-center h-full min-h-[200px]">
+                          <div className="text-center space-y-4">
+                            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center shadow-sm">
+                              <Sparkles className="h-10 w-10 text-blue-500" />
+                            </div>
+                            <div className="space-y-2">
+                              <h3 className="font-semibold text-slate-700 text-lg">Siap untuk Analisis</h3>
+                              <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+                                Video "{selectedVideo.title || 'Tanpa judul'}" sudah dipilih.
+                              </p>
+                              <div className="mt-4 px-4 py-3 bg-green-50 rounded-lg border border-green-200">
+                                <p className="text-sm text-green-700 font-medium mb-1">
+                                  🚀 Siap untuk memulai!
+                                </p>
+                                <p className="text-xs text-green-600">
+                                  Klik tombol "Start Analysis" di atas untuk menganalisis video dan mendapatkan saran AI
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       ) : (
                         // No video selected
-                        <div className="text-center space-y-3 flex items-center justify-center h-full">
-                          <div>
-                            <div className="w-16 h-16 mx-auto bg-slate-200 rounded-full flex items-center justify-center">
-                              <Sparkles className="h-8 w-8 text-slate-400" />
+                        <div className="flex items-center justify-center h-full min-h-[200px]">
+                          <div className="text-center space-y-4">
+                            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center shadow-sm">
+                              <Sparkles className="h-10 w-10 text-purple-500" />
                             </div>
-                            <div className="mt-4">
-                              <h3 className="font-medium text-slate-600 mb-2">Analisis Video dengan AI</h3>
-                              <p className="text-sm text-slate-500 max-w-md">
+                            <div className="space-y-2">
+                              <h3 className="font-semibold text-slate-700 text-lg">Analisis Video dengan AI</h3>
+                              <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
                                 Pilih video dari daftar di sebelah kiri untuk melihat analisis dan saran perbaikan dari AI.
                               </p>
+                              <div className="mt-4 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
+                                <p className="text-xs text-blue-600 font-medium">
+                                  💡 Tip: Klik tombol "Start Analysis" setelah memilih video
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
