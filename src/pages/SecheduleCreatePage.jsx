@@ -11,7 +11,7 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import {
   Card,
   CardHeader,
@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import api from "../api/client";
+import api from "@/api/client";
+import infoMsg from "../assets/info.png"
 
 export default function ScheduleCreatePage() {
   const [videos, setVideos] = useState([]);
@@ -65,18 +66,18 @@ export default function ScheduleCreatePage() {
           // eslint-disable-next-line no-await-in-loop
           await new Promise((r) => setTimeout(r, 150));
         }
-        if (!window.snap) throw new Error("Gagal memuat Midtrans");
+        if (!window.snap) throw new Error("Failed to load Midtrans");
       }
 
       const { data } = await api.post("/payment/create");
-      if (!data || !data.token)
-        throw new Error("Token pembayaran tidak tersedia");
+      if (!data || !data.token) throw new Error("Payment token not available");
 
       window.snap.pay(data.token, {
         onSuccess: async (result) => {
           toast({
-            title: "Pembayaran Berhasil",
-            description: "Akun Anda telah diupgrade ke Premium",
+            title: "Payment Successful",
+            description: "Your account has been upgraded to Premium",
+            variant: "success",
           });
           // trigger backend status check
           try {
@@ -91,14 +92,16 @@ export default function ScheduleCreatePage() {
         },
         onPending: (result) => {
           toast({
-            title: "Pembayaran Pending",
-            description: "Pembayaran sedang diproses.",
+            title: "Payment Pending",
+            description: "Payment is processing.",
+            variant: "warning",
           });
         },
         onError: (result) => {
           toast({
-            title: "Pembayaran Gagal",
-            description: "Terjadi kesalahan pembayaran.",
+            title: "Payment Failed",
+            description: "An error occurred during payment.",
+            variant: "warning",
           });
         },
       });
@@ -107,7 +110,8 @@ export default function ScheduleCreatePage() {
       toast({
         title: "Error",
         description:
-          err?.message || "Terjadi kesalahan saat memulai pembayaran.",
+          err?.message || "An error occurred while starting the payment.",
+        variant: "warning",
       });
     } finally {
       setUpgradeProcessing(false);
@@ -128,12 +132,10 @@ export default function ScheduleCreatePage() {
       } catch (e) {
         if (!mounted) return;
         toast({
-          title: "Error",
+          title: "Failed to load videos",
           description:
-            e?.response?.data?.error || "Gagal memuat Video Library.",
-          variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+            e?.response?.data?.error || "Failed to load Video Library.",
+          variant: "warning",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -144,7 +146,7 @@ export default function ScheduleCreatePage() {
     };
   }, [toast]);
 
-  // Saat pilih video → isi caption/hashtags dari DB
+  // When a video is picked → prefill caption/hashtags from DB
   const onPickVideo = (v) => {
     setSelectedVideo(v);
     setPickerOpen(false);
@@ -187,11 +189,9 @@ export default function ScheduleCreatePage() {
 
       const { data } = await api.post("/schedules", body);
       toast({
-        title: "Success!",
-        description: `✔ ${data?.message || "Schedule created"}`,
-        variant: "default",
-        className:
-          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        title: "Schedule created",
+        description: "Schedule created successfully.",
+        variant: "success",
       });
       if (data?.late?.postId) {
         setLateInfo({ postId: data.late.postId, mode: data.late.mode });
@@ -202,7 +202,7 @@ export default function ScheduleCreatePage() {
       }
       // window.location.href = `/schedule/${data?.schedule?._id}`;
     } catch (e) {
-      const errMsg = e?.response?.data?.error || "Gagal membuat schedule";
+      const errMsg = "Failed to create schedule";
       const redirectTo = e?.response?.data?.redirectTo || null;
       // If backend signals redirectTo (upgrade required), show only the upgrade modal
       // and do not display the destructive toast to avoid duplicate alerts.
@@ -210,11 +210,9 @@ export default function ScheduleCreatePage() {
         setUpgradeRedirect(redirectTo);
       } else {
         toast({
-          title: "Error",
+          title: "Failed to create schedule",
           description: errMsg,
-          variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          variant: "warning",
         });
       }
     } finally {
@@ -234,31 +232,31 @@ export default function ScheduleCreatePage() {
             Create Schedule
           </h1>
           <p className="text-slate-600 text-sm mt-1">
-            Buat jadwal posting baru dari Video Library.
+            Create a new scheduled post from your Video Library.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Kolom kiri: pilih + preview video */}
+          {/* Left column: pick + preview video */}
           <Card className="lg:col-span-1 overflow-hidden text-center">
             <CardHeader className="text-center">
               <CardTitle className="text-lg flex items-center justify-center gap-2">
-                <Video className="h-5 w-5" /> Pilih & Preview Video
+                <Video className="h-5 w-5" /> Pick & Preview Video
               </CardTitle>
               <CardDescription className="text-center">
-                Ambil dari Video Library kamu.
+                Choose from your Video Library.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-sm text-slate-600">Memuat video…</div>
+                <div className="text-sm text-slate-600">Loading videos…</div>
               ) : !selectedVideo ? (
                 <div className="flex items-center justify-center">
                   <HoverButton
                     onClick={() => setPickerOpen(true)}
                     className="touch-manipulation cursor-pointer"
                   >
-                    Pilih Video
+                    Pick Video
                   </HoverButton>
                 </div>
               ) : (
@@ -273,9 +271,7 @@ export default function ScheduleCreatePage() {
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400">
                         <Video className="h-8 w-8" />
-                        <span className="text-xs">
-                          (Preview tidak tersedia)
-                        </span>
+                        <span className="text-xs">(Preview not available)</span>
                       </div>
                     )}
                     <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs text-white">
@@ -285,10 +281,10 @@ export default function ScheduleCreatePage() {
 
                   <div className="text-center w-full max-w-sm">
                     <div className="text-sm font-medium leading-5">
-                      {selectedVideo.title || "Tanpa judul"}
+                      {selectedVideo.title || "Untitled"}
                     </div>
                     <div className="mt-1 text-xs text-slate-600">
-                      Diunggah {fmtDate(selectedVideo.createdAt)} • Durasi{" "}
+                      Uploaded {fmtDate(selectedVideo.createdAt)} • Duration{" "}
                       {fmtDuration(vDur)}
                     </div>
                   </div>
@@ -298,7 +294,7 @@ export default function ScheduleCreatePage() {
                       onClick={() => setPickerOpen(true)}
                       className="px-3 py-1 text-sm cursor-pointer"
                     >
-                      Ganti Video
+                      Change Video
                     </HoverButton>
                     <Button
                       variant="outline"
@@ -309,7 +305,7 @@ export default function ScheduleCreatePage() {
                       }}
                       className="w-32 h-10 lg:h-12 border border-black cursor-pointer"
                     >
-                      Hapus
+                      Remove
                     </Button>
                   </div>
                 </div>
@@ -317,23 +313,23 @@ export default function ScheduleCreatePage() {
             </CardContent>
           </Card>
 
-          {/* Kolom kanan: detail schedule (+ info video terpilih) */}
+          {/* Right column: schedule details (+ selected video info) */}
           <Card className="lg:col-span-2">
             <CardHeader className="text-center">
               <CardTitle className="text-lg flex items-center justify-center gap-2">
-                <CalendarDays className="h-5 w-5" /> Detail Jadwal
+                <CalendarDays className="h-5 w-5" /> Schedule Details
               </CardTitle>
               <CardDescription className="text-center">
-                Atur platform, caption/hashtag, tanggal & jam.
+                Set platform, caption/hashtags, date & time.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              {/* Info video terpilih (read-only) */}
+              {/* Selected video info (read-only) */}
               {selectedVideo && (
                 <div className="rounded-xl border p-3 text-sm flex flex-wrap gap-3 items-center">
                   <span className="inline-flex items-center gap-2 text-slate-700">
                     <Info className="h-4 w-4" /> Video:{" "}
-                    <b>{selectedVideo.title || "Tanpa judul"}</b>
+                    <b>{selectedVideo.title || "Untitled"}</b>
                   </span>
                   <Badge variant="secondary">
                     Uploaded {fmtDate(selectedVideo.createdAt)}
@@ -365,7 +361,7 @@ export default function ScheduleCreatePage() {
                 </div>
               </div>
 
-              {/* Caption (prefill dari video, jika ada) */}
+              {/* Caption (prefill from video, if any) */}
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <label className="text-sm font-medium flex items-center gap-2">
@@ -375,15 +371,15 @@ export default function ScheduleCreatePage() {
                 <textarea
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Tulis caption..."
+                  placeholder="Write a caption..."
                   className="min-h-[100px] w-full rounded-xl border p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 />
               </div>
 
-              {/* Hashtags (prefill dari video, jika ada) */}
+              {/* Hashtags (prefill from video, if any) */}
               <div>
                 <label className="text-sm font-medium flex items-center gap-2">
-                  <Hash className="h-4 w-4" /> Hashtag
+                  <Hash className="h-4 w-4" /> Hashtags
                 </label>
                 <input
                   value={hashtags}
@@ -421,7 +417,7 @@ export default function ScheduleCreatePage() {
               {/* Date & Time */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <label className="text-sm font-medium">Tanggal</label>
+                  <label className="text-sm font-medium">Date</label>
                   <input
                     type="date"
                     value={date}
@@ -430,7 +426,7 @@ export default function ScheduleCreatePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Jam</label>
+                  <label className="text-sm font-medium">Time</label>
                   <input
                     type="time"
                     value={time}
@@ -441,14 +437,14 @@ export default function ScheduleCreatePage() {
               </div>
             </CardContent>
 
-            {/* Tombol Simpan: hanya di bawah */}
+            {/* Save button: bottom only */}
             <CardFooter className="flex items-center justify-end gap-2">
               <Button
                 variant="secondary"
                 onClick={() => window.history.back()}
                 className="w-32 h-10 lg:h-12 border border-black cursor-pointer"
               >
-                Batal
+                Cancel
               </Button>
               <HoverButton
                 onClick={onSubmit}
@@ -465,7 +461,7 @@ export default function ScheduleCreatePage() {
                 }
                 className="w-32 cursor-pointer"
               >
-                {submitting ? "Menyimpan…" : "Simpan"}
+                {submitting ? "Saving…" : "Save"}
               </HoverButton>
             </CardFooter>
           </Card>
@@ -479,13 +475,16 @@ export default function ScheduleCreatePage() {
         )}
         {upgradeRedirect && (
           <div className="fixed right-6 top-6 z-50">
-            <div className="rounded-lg bg-gradient-to-r from-red-500 via-red-400 to-red-300 p-4 text-white shadow-lg">
+            <div className="rounded-lg bg-btn-orange to-red-300 p-4 text-black shadow border border-black">
               <div className="flex items-start gap-4">
                 <div className="flex-1">
-                  <div className="font-semibold">Batas tercapai</div>
+                  <div className="flex items-center gap-2">
+                    <img src={infoMsg} alt="Info" className="w-5 h-5" />
+                    <div className="font-semibold">Limit reached</div>
+                  </div>
                   <div className="text-sm">
-                    Anda telah mencapai batas 2 schedule. Upgrade untuk akses
-                    unlimited.
+                    You have reached the limit of 2 schedules. Upgrade for
+                    unlimited access.
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -495,15 +494,15 @@ export default function ScheduleCreatePage() {
                       startInlineUpgrade();
                     }}
                     disabled={upgradeProcessing}
-                    className="rounded-md bg-white px-3 py-1 text-sm font-medium text-red-600"
+                    className="rounded-md bg-white px-3 py-1 text-xs font-medium text-black border border-black"
                   >
-                    {upgradeProcessing ? "Memproses..." : "Upgrade"}
+                    {upgradeProcessing ? "Processing..." : "Upgrade"}
                   </button>
                   <button
                     onClick={() => setUpgradeRedirect(null)}
-                    className="rounded-md bg-white/10 px-2 py-1 text-sm text-white"
+                    className="rounded-md bg-white px-2 py-1 text-xs text-black border border-black"
                   >
-                    Tutup
+                    Close
                   </button>
                 </div>
               </div>
@@ -521,7 +520,7 @@ export default function ScheduleCreatePage() {
           />
           <div className="relative z-10 h-screen w-screen bg-white shadow-xl flex flex-col">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b p-4 bg-white">
-              <div className="text-sm font-medium">Pilih Video</div>
+              <div className="text-sm font-medium">Pick Video</div>
               <button
                 className="rounded-full p-1 hover:bg-slate-100"
                 onClick={() => setPickerOpen(false)}
@@ -534,7 +533,7 @@ export default function ScheduleCreatePage() {
                 <div className="relative flex-1">
                   <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
                   <input
-                    placeholder="Cari judul video..."
+                    placeholder="Search video title..."
                     readOnly
                     className="w-full rounded-xl border p-2 pl-8 text-sm"
                   />
@@ -564,7 +563,7 @@ export default function ScheduleCreatePage() {
                     </div>
                     <div className="p-3">
                       <div className="text-sm font-medium leading-5 line-clamp-2">
-                        {v.title || "Tanpa judul"}
+                        {v.title || "Untitled"}
                       </div>
                       <div className="mt-1 text-xs text-slate-600">
                         {fmtDate(v.createdAt)}
@@ -574,14 +573,14 @@ export default function ScheduleCreatePage() {
                           onClick={() => onPickVideo(v)}
                           className="px-3 py-1 text-sm h-8 cursor-pointer"
                         >
-                          Pilih
+                          Pick
                         </HoverButton>
                         {v._id === selectedVideo?._id && (
                           <Badge
                             variant="secondary"
                             className="flex items-center gap-1"
                           >
-                            <Check className="h-3.5 w-3.5" /> Dipilih
+                            <Check className="h-3.5 w-3.5" /> Selected
                           </Badge>
                         )}
                       </div>
@@ -589,13 +588,13 @@ export default function ScheduleCreatePage() {
                   </div>
                 ))}
                 {!videos.length && (
-                  <div className="text-sm text-slate-600">Tidak ada video.</div>
+                  <div className="text-sm text-slate-600">No videos found.</div>
                 )}
               </div>
             </div>
             <div className="border-t p-4 text-right">
               <Button variant="secondary" onClick={() => setPickerOpen(false)}>
-                Tutup
+                Close
               </Button>
             </div>
           </div>

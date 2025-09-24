@@ -4,7 +4,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import AOS from "aos";
 import "aos/dist/aos.css";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import { StickyScroll } from "../components/ui/sticky-scroll-reveal";
 import { WobbleCard } from "../components/ui/wobble-card";
 import { Separator } from "@/components/ui/separator";

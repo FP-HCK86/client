@@ -4,15 +4,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import axios from "axios";
+import api from "@/api/client";
 import { useAuth } from "@/hooks/useAuth";
+import FullPageLoader from "@/components/FullPageLoader";
 // import { startOfDay, addDays, sameDay, startOfWeekMonday } from "@/lib/dateHelpers";
 import { addDays, sameDay } from "@/lib/dateHelpers";
 import { getMonthMatrix, getWeekRange } from "@/lib/calendarMatrix";
@@ -42,7 +42,7 @@ export default function ScheduleCalendarPage({
     gotoNext,
   } = useCalendarNavigation();
   const [schedules, setSchedules] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -51,18 +51,15 @@ export default function ScheduleCalendarPage({
   useEffect(() => {
     const fetchSchedules = async () => {
       if (!user) return;
-      setLoading(true);
       try {
-        const response = await axios.get("/schedules");
+        const response = await api.get("/schedules");
         setSchedules(response.data.schedules || []);
       } catch (err) {
         toast({
-          title: "Error",
-          description: err.message || "Failed to fetch schedules",
-          variant: "destructive",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-        });
+            title: "Failed to load schedules",
+            description: err?.response?.data?.error || err.message || "Failed to fetch schedules.",
+            variant: "warning",
+          });
         console.error("Error fetching schedules:", err);
       } finally {
         setLoading(false);
@@ -105,6 +102,8 @@ export default function ScheduleCalendarPage({
       window.location.href = "/schedules/create";
   };
 
+  if (loading) return <FullPageLoader text="Loading schedules..." />;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
       {/* Center container with max width and auto margins */}
@@ -115,9 +114,7 @@ export default function ScheduleCalendarPage({
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight flex items-center gap-2">
               <CalendarDays className="h-6 w-6" /> Schedule Calendar
             </h1>
-            <p className="text-slate-600 text-sm mt-1">
-              Lihat semua jadwal posting dalam tampilan bulan/minggu/hari.
-            </p>
+            <p className="text-slate-600 text-sm mt-1">View all scheduled posts in month/week/day views.</p>
           </div>
           <div className="flex gap-2">
             <HoverButton
@@ -132,9 +129,7 @@ export default function ScheduleCalendarPage({
         {/* Toolbar */}
         <Card className="mt-6">
           <CardContent className="p-4">
-            {loading && (
-              <div className="text-center py-4">Loading schedules...</div>
-            )}
+            {/* full-page loader shown while fetching schedules */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <Button
@@ -195,7 +190,7 @@ export default function ScheduleCalendarPage({
         {view === "month" && (
           <div className="mt-4 rounded-2xl border bg-white">
             {/* Header untuk mobile - sembunyikan di desktop */}
-            <div className="block md:hidden border-b p-3 text-center text-sm font-medium text-slate-600">
+              <div className="block md:hidden border-b p-3 text-center text-sm font-medium text-slate-600">
               {formatDateHead(currentDate)}
             </div>
             <div className="hidden md:grid md:grid-cols-7 border-b text-xs font-medium text-slate-600">

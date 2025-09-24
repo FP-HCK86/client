@@ -6,11 +6,11 @@ export const useNotifications = () => {
   const { toast } = useToast();
 
   const showSuccess = (title, description) => {
-    toast({ title: title || 'Success', description });
+    toast({ title: title || 'Success', description, variant: 'success' });
   };
 
   const showError = (title, description) => {
-    toast({ title: title || 'Error', description, variant: 'destructive' });
+    toast({ title: title || 'Error', description, variant: 'warning' });
   };
 
   return { showSuccess, showError };

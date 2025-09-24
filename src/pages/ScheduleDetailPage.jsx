@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Clock, Video, Hash, Play, Copy } from "lucide-react";
+import { CalendarDays, Clock, Play, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import {
   Card,
   CardHeader,
@@ -24,7 +24,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import api from "../api/client";
+import api from "@/api/client";
+import FullPageLoader from "@/components/FullPageLoader";
 
 export default function ScheduleDetailPage() {
   const { id } = useParams();
@@ -50,10 +51,9 @@ export default function ScheduleDetailPage() {
       } catch (err) {
         setError(err.response?.data?.error || "Failed to fetch schedule");
         toast({
-          title: "Gagal Memuat Schedule",
+          title: "Failed to load schedule",
           description: err.response?.data?.error || "Failed to fetch schedule",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          variant: "warning",
         });
       } finally {
         setLoading(false);
@@ -62,12 +62,7 @@ export default function ScheduleDetailPage() {
     if (id) fetchSchedule();
   }, [id, toast]);
 
-  if (loading)
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading...
-      </div>
-    );
+  if (loading) return <FullPageLoader text="Loading schedule..." />;
   if (error)
     return (
       <div className="min-h-screen flex items-center justify-center text-red-500">
@@ -140,17 +135,15 @@ export default function ScheduleDetailPage() {
       setSchedule(data.schedule);
       setEditing(false);
       toast({
-        title: "Schedule Berhasil Diperbarui",
-        description: data?.message || "Schedule berhasil diperbarui",
-        className:
-          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        title: "Schedule updated",
+        description: data?.message || "Schedule updated successfully",
+        variant: "success",
       });
     } catch (e) {
       toast({
-        title: "Gagal Memperbarui Schedule",
-        description: e?.response?.data?.error || "Gagal memperbarui schedule",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        title: "Failed to update schedule",
+        description: e?.response?.data?.error || "Failed to update schedule",
+        variant: "warning",
       });
     } finally {
       setSubmitting(false);
@@ -162,10 +155,9 @@ export default function ScheduleDetailPage() {
       setDeleting(true);
       await api.delete(`/schedules/${id}`);
       toast({
-        title: "Schedule Berhasil Dihapus",
-        description: "Schedule telah berhasil dihapus",
-        className:
-          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        title: "Schedule deleted",
+        description: "Schedule has been deleted",
+        variant: "success",
       });
 
       // Give user time to see the success toast before redirecting
@@ -174,10 +166,9 @@ export default function ScheduleDetailPage() {
       }, 2000); // 2 seconds delay
     } catch (e) {
       toast({
-        title: "Gagal Menghapus Schedule",
-        description: e?.response?.data?.error || "Gagal menghapus schedule",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        title: "Failed to delete schedule",
+        description: e?.response?.data?.error || "Failed to delete schedule",
+        variant: "warning",
       });
       setDeleting(false); // Only reset deleting state on error, not on success
     }
@@ -185,7 +176,12 @@ export default function ScheduleDetailPage() {
   };
 
   const statusBadge =
-    schedule.status === "posted" ? (
+    // Compute effective status: if still 'pending' but vendor_job_id exists and scheduled time passed, treat as posted (UI only)
+    (schedule.status === "pending" &&
+    schedule.vendor_job_id &&
+    new Date(schedule.scheduled_at).getTime() <= Date.now()
+      ? "posted"
+      : schedule.status) === "posted" ? (
       <Badge className="btn-green border-black font-normal">Posted</Badge>
     ) : schedule.status === "failed" ? (
       <Badge className="bg-red-100 text-black border-black">Failed</Badge>
@@ -193,10 +189,7 @@ export default function ScheduleDetailPage() {
       <Badge className="btn-orange border-black">Pending</Badge>
     );
 
-  const logs = [
-    { time: schedule.createdAt, text: "Schedule created" },
-    { time: schedule.updatedAt, text: "Updated metadata" },
-  ];
+  // logs removed — not used in UI
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
@@ -220,7 +213,7 @@ export default function ScheduleDetailPage() {
                     onClick={saveEdits}
                     disabled={submitting}
                   >
-                    {submitting ? "Menyimpan…" : "Simpan"}
+                    {submitting ? "Saving..." : "Save"}
                   </HoverButton>
                   <Button
                     size="sm"
@@ -228,7 +221,7 @@ export default function ScheduleDetailPage() {
                     onClick={() => setEditing(false)}
                     disabled={submitting}
                   >
-                    Batal
+                    Cancel
                   </Button>
                 </>
               ) : (
@@ -247,24 +240,24 @@ export default function ScheduleDetailPage() {
                         disabled={deleting}
                         className="border border-black"
                       >
-                        {deleting ? "Menghapus…" : "Delete"}
+                        {deleting ? "Deleting..." : "Delete"}
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Hapus Schedule</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Apakah Anda yakin ingin menghapus schedule ini?
-                          Tindakan ini tidak dapat dibatalkan.
+                          Are you sure you want to delete this schedule? This
+                          action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           onClick={handleDeleteSchedule}
                           className="bg-red-600 hover:bg-red-700"
                         >
-                          Hapus
+                          Delete
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -278,10 +271,9 @@ export default function ScheduleDetailPage() {
                   className="border border-black"
                   onClick={() => {
                     toast({
-                      title: "Tidak Dapat Diedit",
-                      description: `Schedule tidak dapat diedit karena status sudah ${schedule.status}`,
-                      className:
-                        "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
+                      title: "Cannot edit",
+                      description: `Schedule cannot be edited because status is ${schedule.status}`,
+                      variant: "warning",
                     });
                   }}
                 >
@@ -292,10 +284,9 @@ export default function ScheduleDetailPage() {
                   className="border border-black"
                   onClick={() => {
                     toast({
-                      title: "Tidak Dapat Dihapus",
-                      description: `Schedule tidak dapat dihapus karena status sudah ${schedule.status}`,
-                      className:
-                        "bg-gradient-to-r from-orange-400 via-orange-300 to-orange-200 border-orange-300 text-gray-800",
+                      title: "Cannot delete",
+                      description: `Schedule cannot be deleted because status is ${schedule.status}`,
+                      variant: "warning",
                     });
                   }}
                 >
@@ -321,7 +312,7 @@ export default function ScheduleDetailPage() {
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500 bg-black/5">
                   <Play className="h-10 w-10 text-slate-600" />
                   <span className="text-sm text-slate-600">
-                    (Preview video akan tampil di sini)
+                    (Preview video will appear here)
                   </span>
                 </div>
               )}
@@ -351,7 +342,7 @@ export default function ScheduleDetailPage() {
           {/* Info panel */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Info Jadwal</CardTitle>
+              <CardTitle className="text-lg">Schedule Info</CardTitle>
               <CardDescription>Status & metadata</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -381,7 +372,7 @@ export default function ScheduleDetailPage() {
                 )}
               </div>
               <div className="rounded-xl border p-3 text-sm">
-                <div className="text-xs text-slate-500">Waktu Terjadwal</div>
+                <div className="text-xs text-slate-500">Scheduled Time</div>
                 <div className="mt-0.5 font-medium flex items-center gap-2">
                   <CalendarDays className="h-4 w-4" />{" "}
                   {fmtDateTime(schedule.scheduled_at)}
@@ -400,7 +391,7 @@ export default function ScheduleDetailPage() {
                   <textarea
                     value={editCaption}
                     onChange={(e) => setEditCaption(e.target.value)}
-                    placeholder="Tulis caption..."
+                    placeholder="Write caption..."
                     className="min-h-[100px] w-full rounded-xl border p-3 text-sm"
                   />
                 )}
@@ -414,7 +405,7 @@ export default function ScheduleDetailPage() {
                       else navigator.clipboard?.writeText(editCaption || "");
                     }}
                   >
-                    <Copy className="mr-2 h-4 w-4" /> copy
+                    <Copy className="mr-2 h-4 w-4" /> Copy
                   </Button>
                 </div>
               </div>
@@ -464,7 +455,7 @@ export default function ScheduleDetailPage() {
                       else navigator.clipboard?.writeText(editHashtags || "");
                     }}
                   >
-                    <Copy className="mr-2 h-4 w-4" /> copy
+                    <Copy className="mr-2 h-4 w-4" /> Copy
                   </Button>
                 </div>
               </div>
@@ -483,7 +474,7 @@ export default function ScheduleDetailPage() {
                   />
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-sm font-medium">Tanggal</label>
+                      <label className="text-sm font-medium">Date</label>
                       <input
                         type="date"
                         value={editDate}
@@ -492,7 +483,7 @@ export default function ScheduleDetailPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium">Jam</label>
+                      <label className="text-sm font-medium">Time</label>
                       <input
                         type="time"
                         value={editTime}

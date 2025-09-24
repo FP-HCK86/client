@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '@/api/client';
 
 // Environment variables
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
@@ -15,26 +15,12 @@ export const AuthProvider = ({ children }) => {
 
   // Configure axios defaults
   useEffect(() => {
-    axios.defaults.baseURL = API_BASE_URL;
-
-    // Add request interceptor for auth token
-    const requestInterceptor = axios.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('authToken');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    // Add response interceptor for token refresh
-    const responseInterceptor = axios.interceptors.response.use(
+    // Add response interceptor for token expiration handling on shared api client
+    const responseInterceptor = api.interceptors.response.use(
       (response) => response,
       async (error) => {
         if (error.response?.status === 401) {
-          // Token expired, clear auth state
+          // Token expired or invalid: clear auth state
           localStorage.removeItem('authToken');
           setUser(null);
           setIsAuthenticated(false);
@@ -44,8 +30,7 @@ export const AuthProvider = ({ children }) => {
     );
 
     return () => {
-      axios.interceptors.request.eject(requestInterceptor);
-      axios.interceptors.response.eject(responseInterceptor);
+      api.interceptors.response.eject(responseInterceptor);
     };
   }, []);
 
@@ -79,10 +64,10 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const login = useCallback(async (email, password) => {
     try {
-      const response = await axios.post('/auth/login', {
-        email,
-        password,
-      });
+        const response = await api.post('/auth/login', {
+          email,
+          password,
+        });
 
       if (response.data.access_token) {
         localStorage.setItem('authToken', response.data.access_token);
@@ -108,11 +93,11 @@ export const AuthProvider = ({ children }) => {
   // Register function
   const register = useCallback(async (username, email, password) => {
     try {
-      const response = await axios.post('/auth/register', {
-        username,
-        email,
-        password,
-      });
+        const response = await api.post('/auth/register', {
+          username,
+          email,
+          password,
+        });
 
       if (response.data.access_token) {
         localStorage.setItem('authToken', response.data.access_token);
@@ -138,8 +123,8 @@ export const AuthProvider = ({ children }) => {
   // Google login function - matches backend expectation
   const googleLogin = useCallback(async (credential) => {
     try {
-      const response = await axios.post('/auth/google-login', {
-        credential: credential
+      const response = await api.post('/auth/google-login', {
+        credential: credential,
       });
 
       if (response.data.access_token) {

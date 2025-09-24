@@ -22,7 +22,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/**/*.d.ts"
-  ],
+, "src/components/LoadingSpinner.jsx", "src/components/HoverButton.jsx", "src/components/FullPageLoader.jsx"  ],
   "exclude": [
     "node_modules",
     "dist"

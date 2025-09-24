@@ -1,6 +1,6 @@
 // src/pages/VideoLibraryPage.jsx
 import React, { useState, useEffect } from "react";
-import { Film, Clock, Trash2, Filter as FilterIcon } from "lucide-react";
+import { Film, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import api from "../api/client";
+import api from '@/api/client';
+import FullPageLoader from '@/components/FullPageLoader';
 
 export default function VideoLibraryPage() {
   const [videos, setVideos] = useState([]);
@@ -34,11 +35,10 @@ export default function VideoLibraryPage() {
       } catch (e) {
         if (!mounted) return;
         toast({
-          title: "Error",
-          description: e?.response?.data?.error || "Gagal memuat video.",
-          variant: "destructive",
-          className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-        });
+            title: "Error",
+            description: e?.response?.data?.error || "Failed to load videos.",
+            variant: "warning",
+          });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -72,9 +72,9 @@ export default function VideoLibraryPage() {
       await api.delete(`/videos/${id}`);
       setVideos((prev) => prev.filter((v) => (v._id || v.id) !== id));
       toast({
-        title: "Video Berhasil Dihapus",
-        description: "Video telah berhasil dihapus dari library",
-        className: "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        title: "Video Deleted",
+        description: "Video has been removed from the library.",
+        variant: "success",
       });
       
       // Give user time to see the success toast
@@ -84,15 +84,17 @@ export default function VideoLibraryPage() {
       
     } catch (error) {
       toast({
-        title: "Gagal Menghapus Video",
-        description: error?.response?.data?.error || "Gagal menghapus video",
-        className: "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        title: "Failed to Delete Video",
+        description: error?.response?.data?.error || "Failed to delete video.",
+        variant: "warning",
       });
       setDeleting(null); // Reset immediately on error
     }
   }
 
-  const shown = videos; // semua hasil GET /videos
+  // Use videos state directly
+
+  if (loading) return <FullPageLoader text="Loading video list..." />;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
@@ -103,13 +105,7 @@ export default function VideoLibraryPage() {
             <Film className="h-6 w-6" /> Video Library
           </h1>
           <div className="text-sm text-slate-600">
-            {loading ? (
-              "Memuat…"
-            ) : (
-              <>
-                Total: <span className="font-medium">{shown.length}</span> video
-              </>
-            )}
+            Total: <span className="font-medium">{videos.length}</span> videos
           </div>
         </div>
 
@@ -117,30 +113,30 @@ export default function VideoLibraryPage() {
         <Card className="mt-6">
           <CardContent className="p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-end">
-              <div>
-                <label className="text-sm font-medium">Dari Tanggal</label>
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-xl border p-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Sampai Tanggal</label>
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-xl border p-2 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">Urutkan</label>
-                <select className="mt-1 w-full rounded-xl border p-2 text-sm">
-                  <option value="desc">Terbaru</option>
-                  <option value="asc">Terlama</option>
-                </select>
-              </div>
+                <div>
+                  <label className="text-sm font-medium">From Date</label>
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-xl border p-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">To Date</label>
+                  <input
+                    type="date"
+                    className="mt-1 w-full rounded-xl border p-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Sort</label>
+                  <select className="mt-1 w-full rounded-xl border p-2 text-sm">
+                    <option value="desc">Newest</option>
+                    <option value="asc">Oldest</option>
+                  </select>
+                </div>
               <div className="flex gap-2">
                 <Button className="w-full" variant="secondary">
-                  <FilterIcon className="mr-2 h-4 w-4" /> Reset Filter
+                  Reset Filter
                 </Button>
               </div>
             </div>
@@ -149,12 +145,10 @@ export default function VideoLibraryPage() {
 
   {/* Grid Video */}
   <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-          {loading ? (
-            <div className="text-sm text-slate-600">Memuat daftar video…</div>
-          ) : shown.length === 0 ? (
-            <div className="text-sm text-slate-600">Belum ada video.</div>
+          {videos.length === 0 ? (
+            <div className="text-sm text-slate-600">No videos yet.</div>
           ) : (
-            shown.map((v) => {
+            videos.map((v) => {
               const id = v._id || v.id;
               const duration = v.duration_sec ?? v.durationSec;
               const createdAt = v.createdAt || v.created_at;
@@ -186,7 +180,7 @@ export default function VideoLibraryPage() {
                       <div className="relative z-10 w-full h-full rounded-xl p-4 flex flex-col justify-between">
                         <div>
                           <p className="text-sm font-semibold leading-5 line-clamp-2 text-white">
-                            {v.title || "Tanpa judul"}
+                            {v.title || "Untitled"}
                           </p>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/90">
                             <Badge variant="secondary">
@@ -211,7 +205,7 @@ export default function VideoLibraryPage() {
                             size="sm"
                             onClick={() => (window.location.href = `/videos/${id}`)}
                           >
-                            Buka Detail
+                            Open Details
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -220,24 +214,23 @@ export default function VideoLibraryPage() {
                                 size="sm"
                                 disabled={deleting === id}
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {deleting === id ? "Menghapus..." : "Hapus"}
+                                {deleting === id ? "Deleting..." : "Delete"}
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Hapus Video</AlertDialogTitle>
+                                <AlertDialogTitle>Delete Video</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Apakah Anda yakin ingin menghapus video ini? Tindakan ini tidak dapat dibatalkan.
+                                  Are you sure you want to delete this video? This action cannot be undone.
                                 </AlertDialogDescription>
-                              </AlertDialogHeader>  
+                              </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogCancel className="border border-black">Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDeleteVideo(id)}
-                                  className="bg-red-600 hover:bg-red-700"
+                                  className="btn-default border border-black"
                                 >
-                                  Hapus
+                                  Delete
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

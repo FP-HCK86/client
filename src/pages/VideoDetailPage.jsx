@@ -1,9 +1,9 @@
 // src/pages/VideoDetailPage.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Film, Clock, Copy, Calendar, Edit, Save, X } from "lucide-react";
+import { Film, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import {
   Card,
   CardHeader,
@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import api from "../api/client";
+import api from "@/api/client";
+import FullPageLoader from "@/components/FullPageLoader";
 
 export default function VideoDetailPage() {
   const { id } = useParams(); // route: /videos/:id
@@ -38,29 +39,31 @@ export default function VideoDetailPage() {
         const { data } = await api.get(`/videos/${id}`);
         if (!mounted) return;
         // ekspektasi backend: { video: {...} }
-        setVideo(data?.video || null);
-        if (data?.video) {
-          setEditForm({
-            title: data.video.title || "",
-            caption: data.video.caption || "",
-            hashtags: data.video.hashtags || "",
-          });
-        }
         if (!data?.video) {
-          toast({
-            title: "Video Tidak Ditemukan",
-            description: "Video yang Anda cari tidak dapat ditemukan",
-            className:
-              "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
-          });
+          // jika tidak ada video, beri tahu dan hentikan lebih awal
+            toast({
+              title: "Video not found",
+              description: "The requested video could not be found.",
+              variant: "warning",
+            });
+          setVideo(null);
+          setLoading(false);
+          return;
         }
+
+        // data video ada — set state sekaligus
+        setVideo(data.video);
+        setEditForm({
+          title: data.video.title || "",
+          caption: data.video.caption || "",
+          hashtags: data.video.hashtags || "",
+        });
       } catch (e) {
         if (!mounted) return;
         toast({
-          title: "Gagal Memuat Video",
-          description: e?.response?.data?.error || "Gagal memuat detail video",
-          className:
-            "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+          title: "Failed to load video",
+          description: e?.response?.data?.error || "Failed to load video details",
+          variant: "warning",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -111,17 +114,15 @@ export default function VideoDetailPage() {
       setVideo(data.video);
       setIsEditing(false);
       toast({
-        title: "Video Berhasil Diperbarui",
-        description: "Video telah berhasil diperbarui",
-        className:
-          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        title: "Video updated",
+        description: "The video has been updated successfully.",
+        variant: "success",
       });
     } catch (e) {
       toast({
-        title: "Gagal Memperbarui Video",
-        description: e?.response?.data?.error || "Gagal memperbarui video",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        title: "Failed to update video",
+        description: e?.response?.data?.error || "Failed to update video",
+        variant: "warning",
       });
     }
   };
@@ -138,10 +139,12 @@ export default function VideoDetailPage() {
     ? String(video.hashtags).split(/\s+/).filter(Boolean)
     : [];
 
-  const title = video?.title || "Tanpa judul";
+  const title = video?.title || "Untitled";
   const uploadedAt = video?.createdAt || video?.uploadedAt;
   const durationSec = video?.duration_sec ?? video?.durationSec;
   const secureUrl = video?.secure_url || video?.url || "";
+
+  if (loading) return <FullPageLoader />;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
@@ -151,31 +154,20 @@ export default function VideoDetailPage() {
           <div className="flex items-center gap-3">
             <div>
               {isEditing ? (
-                <div className="space-y-2">
-                  <Label htmlFor="title">Judul Video</Label>
+                <div>
                   <Input
                     id="title"
+                    aria-label="Video Title"
                     value={editForm.title}
                     onChange={(e) => handleFormChange("title", e.target.value)}
                     className="text-2xl md:text-3xl font-semibold tracking-tight h-auto py-1 border-none shadow-none px-0 focus-visible:ring-0"
-                    placeholder="Masukkan judul video..."
+                    placeholder="Enter video title..."
                   />
                 </div>
               ) : (
-                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
-                  {loading ? "Memuat…" : title}
-                </h1>
+                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">{title}</h1>
               )}
-              <p className="text-slate-600 text-sm mt-1">
-                {loading ? (
-                  ""
-                ) : (
-                  <>
-                    Diunggah {fmtDate(uploadedAt)} · Durasi{" "}
-                    {fmtDuration(durationSec)}
-                  </>
-                )}
-              </p>
+              <p className="text-slate-600 text-sm mt-1">Uploaded {fmtDate(uploadedAt)} · Duration {fmtDuration(durationSec)}</p>
             </div>
           </div>
           <div className="flex gap-4">
@@ -186,10 +178,10 @@ export default function VideoDetailPage() {
                   variant="default"
                   className="btn-default inline-flex items-center gap-2 px-3 py-1 h-8"
                 >
-                  <Save className="mr-2 h-4 w-4" /> Simpan
+                  Save
                 </Button>
-                <Button onClick={handleCancelEdit} variant="outline">
-                  <X className="mr-2 h-4 w-4" /> Batal
+                <Button onClick={handleCancelEdit} variant="outline" className="border border-black">
+                  Cancel
                 </Button>
               </>
             ) : (
@@ -199,13 +191,13 @@ export default function VideoDetailPage() {
                   variant="outline"
                   className="inline-flex items-center gap-2 px-3 py-1 h-12 border border-black"
                 >
-                  <Edit className="mr-2 h-4 w-4" /> Edit
+                  Edit
                 </Button>
                 <HoverButton
                   onClick={() => navigate("/schedule/create")}
                   className="inline-flex items-center gap-2 px-3 py-1 h-8"
                 >
-                  <Calendar className="mr-2 h-4 w-4" /> Schedule Post
+                  Schedule Post
                 </HoverButton>
               </>
             )}
@@ -225,9 +217,7 @@ export default function VideoDetailPage() {
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-400 bg-black/5">
                   <Film className="h-10 w-10" />
-                  <span className="text-sm text-slate-600">
-                    (Preview video akan tampil di sini)
-                  </span>
+                  <span className="text-sm text-slate-600">(Video preview will appear here)</span>
                 </div>
               )}
               <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs text-white">
@@ -240,15 +230,15 @@ export default function VideoDetailPage() {
           {/* Kolom kanan: Insight ringkas */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Insight Ringkas</CardTitle>
-              <CardDescription>Caption & hashtag siap pakai.</CardDescription>
+              <CardTitle className="text-lg">Quick Insights</CardTitle>
+              <CardDescription>Ready-to-use caption & hashtags.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Captions */}
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium">Caption</span>
-                  {!isEditing && (
+                      {!isEditing && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -257,7 +247,7 @@ export default function VideoDetailPage() {
                         if (text) navigator.clipboard.writeText(text);
                       }}
                     >
-                      <Copy className="mr-2 h-4 w-4" /> Copy
+                      Copy
                     </Button>
                   )}
                 </div>
@@ -270,7 +260,7 @@ export default function VideoDetailPage() {
                       onChange={(e) =>
                         handleFormChange("caption", e.target.value)
                       }
-                      placeholder="Masukkan caption video..."
+                      placeholder="Enter video caption..."
                       rows={3}
                     />
                   </div>
@@ -288,9 +278,7 @@ export default function VideoDetailPage() {
                     ))}
                     {(!captions || captions.length === 0) &&
                       !video?.caption && (
-                        <div className="text-xs text-slate-500">
-                          Belum ada caption.
-                        </div>
+                        <div className="text-xs text-slate-500">No captions yet.</div>
                       )}
                   </div>
                 )}
@@ -300,7 +288,7 @@ export default function VideoDetailPage() {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium">Hashtag</span>
-                  {!isEditing && (
+                    {!isEditing && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -309,7 +297,7 @@ export default function VideoDetailPage() {
                         if (t) navigator.clipboard.writeText(t);
                       }}
                     >
-                      <Copy className="mr-2 h-4 w-4" /> Copy
+                      Copy
                     </Button>
                   )}
                 </div>
@@ -322,7 +310,7 @@ export default function VideoDetailPage() {
                       onChange={(e) =>
                         handleFormChange("hashtags", e.target.value)
                       }
-                      placeholder="Masukkan hashtags (pisahkan dengan spasi)..."
+                      placeholder="Enter hashtags (separate with spaces)..."
                     />
                   </div>
                 ) : (
@@ -334,9 +322,7 @@ export default function VideoDetailPage() {
                         </Badge>
                       ))
                     ) : (
-                      <span className="text-xs text-slate-500">
-                        Belum ada hashtag.
-                      </span>
+                      <span className="text-xs text-slate-500">No hashtags yet.</span>
                     )}
                   </div>
                 )}

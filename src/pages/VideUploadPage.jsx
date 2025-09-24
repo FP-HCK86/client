@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import { UploadCloud, Film, Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import {
   Card,
   CardHeader,
@@ -11,7 +11,8 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import api from "../api/client";
+import api from '@/api/client';
+import FullPageLoader from '@/components/FullPageLoader';
 
 export default function VideoUploadPage() {
   const [file, setFile] = useState(null);
@@ -22,31 +23,42 @@ export default function VideoUploadPage() {
 
   const [uploading, setUploading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   function onPickFile(e) {
     const f = e.target.files?.[0];
+    // Revoke previous preview URL to avoid memory leak
+    if (previewUrl) {
+      try { URL.revokeObjectURL(previewUrl); } catch (_) {}
+    }
     setFile(f || null);
     setPreviewUrl(f ? URL.createObjectURL(f) : "");
   }
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        try { URL.revokeObjectURL(previewUrl); } catch (_) {}
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function onSave() {
     if (!file) {
       toast({
         title: "Error",
-        description: "Pilih file video.",
-        variant: "destructive",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        description: "Please select a video file.",
+        variant: "warning",
       });
       return;
     }
     if (!caption) {
       toast({
         title: "Error",
-        description: "Caption wajib diisi.",
-        variant: "destructive",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        description: "Caption is required.",
+        variant: "warning",
       });
       return;
     }
@@ -66,20 +78,16 @@ export default function VideoUploadPage() {
 
       toast({
         title: "Success!",
-        description: `✔ Sukses upload. ID: ${data?.video?._id || "-"}`,
-        variant: "default",
-        className:
-          "bg-gradient-to-r from-purple-600 via-purple-500 to-purple-300 border-purple-300 text-white",
+        description: `Upload video successful.`,
+        variant: "success",
       });
-      // Opsional: redirect ke library
-      // navigate(`/videos`);
+      // Redirect to library after a short delay so the user can see the toast
+      setTimeout(() => navigate('/videos'), 700);
     } catch (e) {
       toast({
         title: "Upload Failed",
-        description: e?.response?.data?.error || "Upload gagal.",
-        variant: "destructive",
-        className:
-          "bg-gradient-to-r from-red-500 via-red-400 to-red-300 border-red-300 text-white",
+        description: e?.response?.data?.error || "Upload video failed.",
+        variant: "warning",
       });
     } finally {
       setUploading(false);
@@ -88,6 +96,7 @@ export default function VideoUploadPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
+      {uploading && <FullPageLoader text="Uploading video…" />}
       <div className="px-4 py-6 md:px-10 md:py-10 lg:px-15 lg:py-2">
         {/* Header */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -95,9 +104,7 @@ export default function VideoUploadPage() {
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight flex items-center gap-2">
               <Film className="h-6 w-6" /> Upload Video
             </h1>
-            <p className="text-slate-600 mt-1">
-              Unggah ke Cloudinary & simpan metadata ke DB.
-            </p>
+            <p className="text-slate-600 mt-1">Upload to Cloudinary & save metadata to DB.</p>
           </div>
         </div>
 
@@ -106,11 +113,9 @@ export default function VideoUploadPage() {
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <UploadCloud className="h-5 w-5" /> Pilih Video
+                <UploadCloud className="h-5 w-5" /> Select Video
               </CardTitle>
-              <CardDescription>
-                Seret & lepas atau klik area di bawah.
-              </CardDescription>
+              <CardDescription>Drag & drop or click the area below.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="group relative w-full rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center hover:border-slate-300">
@@ -126,8 +131,7 @@ export default function VideoUploadPage() {
                     <UploadCloud className="h-7 w-7" />
                   </div>
                   <p className="mt-3 text-sm">
-                    <span className="font-medium">Seret & lepas</span> atau klik
-                    untuk <span className="font-medium">pilih file</span>
+                    <span className="font-medium">Drag & drop</span> or click to <span className="font-medium">select a file</span>
                   </p>
                 </div>
               </div>
@@ -139,13 +143,13 @@ export default function VideoUploadPage() {
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Judul (opsional)"
+                  placeholder="Title (optional)"
                   className="w-full rounded-xl border p-3 text-sm"
                 />
                 <textarea
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Caption (wajib)"
+                  placeholder="Caption (required)"
                   className="w-full rounded-xl border p-3 text-sm"
                 />
                 <input
@@ -163,7 +167,7 @@ export default function VideoUploadPage() {
                 className="cursor-pointer"
               >
                 <Save className="mr-2 h-4 w-4" />{" "}
-                {uploading ? "Menyimpan…" : "Simpan"}
+                {uploading ? "Saving…" : "Save"}
               </HoverButton>
             </CardFooter>
           </Card>
@@ -171,10 +175,9 @@ export default function VideoUploadPage() {
           {/* Kolom kanan: preview & catatan ringkas */}
           <Card className="lg:col-span-2">
             <CardHeader className="text-center">
-              <CardTitle className="text-lg mx-auto">Preview & Catatan</CardTitle>
+              <CardTitle className="text-lg mx-auto">Preview & Notes</CardTitle>
               <CardDescription className="mx-auto">
-                Pratinjau video yang dipilih akan muncul di sini. Informasi upload
-                dan catatan teknis ditampilkan di bawah preview.
+                The selected video preview will appear here. Upload info and technical notes are shown below the preview.
               </CardDescription>
             </CardHeader>
             <CardContent className="text-sm text-slate-700 space-y-4">
@@ -190,9 +193,7 @@ export default function VideoUploadPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gray-100 text-xs text-slate-500 py-3 px-3 rounded">
-                    Belum ada preview.
-                  </div>
+                  <div className="bg-gray-100 text-xs text-slate-500 py-3 px-3 rounded">No preview available.</div>
                 )}  
               </div>
             </CardContent>

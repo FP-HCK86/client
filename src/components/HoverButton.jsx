@@ -9,15 +9,16 @@ export default function HoverButton({
   disabled = false,
   fullWidth = false,
   children,
+  ...rest
 }) {
   // choose element: anchor when href provided, otherwise button
   const isAnchor = typeof href === "string" && href.length > 0;
   const Component = isAnchor ? "a" : "button";
 
-  // build props for element
+  // build props for element and allow forwarding arbitrary props (aria-*, data-*, etc.)
   const elementProps = isAnchor
-    ? { href: disabled ? undefined : href }
-    : { type, onClick };
+    ? { href: disabled ? undefined : href, ...rest }
+    : { type, onClick, ...rest };
 
   // disabled behavior for non-anchor: pass disabled attribute
   if (!isAnchor && disabled) elementProps.disabled = true;
