@@ -8,10 +8,11 @@ import {
   Video,
   Send,
   Trash2,
+  Lock,
 } from "lucide-react";
 import { useNavigate } from "react-router";
 import { toast } from "react-hot-toast";
-import AnalysisProgressModal from "@/components/AnalysisProgressModalFixed";
+import SimpleProgressModal from "@/components/SimpleProgressModal";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,15 +27,22 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import api from "../api/client";
 
 const MAX_FILE_MB = 1024; // 1 GB
+const API_BASE_URL =
+  import.meta.env.VITE_SERVER_BASE_URL || "http://localhost:3000";
 
 export default function CanvasPage() {
   const navigate = useNavigate();
   const [canvasMode, setCanvasMode] = useState("create"); // 'create' or 'discuss'
+  // User subscription state
+  const [userSubscription, setUserSubscription] = useState("free");
+  const [isPremium, setIsPremium] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const [chatMessages, setChatMessages] = useState([
     {
       role: "assistant",
-      content: "Halo! Sebelum kita mulai membuat konten, mari pilih persona creator Anda dulu. Apakah Anda ingin menggunakan persona yang sudah ada atau membuat persona baru?"
-    }
+      content:
+        "Halo! Sebelum kita mulai membuat konten, mari pilih persona creator Anda dulu. Apakah Anda ingin menggunakan persona yang sudah ada atau membuat persona baru?",
+    },
   ]);
   const [currentMessage, setCurrentMessage] = useState("");
   const [videoChatInput, setVideoChatInput] = useState("");
@@ -50,20 +58,20 @@ export default function CanvasPage() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [showCreatePersonaForm, setShowCreatePersonaForm] = useState(false);
   const [personaFormData, setPersonaFormData] = useState({
-    name: '',
-    contentNiche: '',
-    platformPriority: '',
-    contentStyle: '',
-    brandVoice: '',
+    name: "",
+    contentNiche: "",
+    platformPriority: "",
+    contentStyle: "",
+    brandVoice: "",
     targetAudience: {
-      ageGroup: '',
-      location: 'indonesia'
+      ageGroup: "",
+      location: "indonesia",
     },
-    videoDurationPreference: '',
+    videoDurationPreference: "",
     contentGoals: [],
-    description: '',
+    description: "",
     keyTopics: [],
-    isActive: false
+    isActive: false,
   });
 
   // Chat History State (inside chat container)
@@ -75,137 +83,243 @@ export default function CanvasPage() {
   const [videos, setVideos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [loadingVideos, setLoadingVideos] = useState(false);
-  
+
   // Progress modal states
   const [showAnalysisProgress, setShowAnalysisProgress] = useState(false);
   const [analysisVideo, setAnalysisVideo] = useState(null);
+  const [forceUpdate, setForceUpdate] = useState(0);
+
+  // Content generation modal states
+  const [showContentGenerationProgress, setShowContentGenerationProgress] =
+    useState(false);
 
   // Handle authentication errors
   const handleAuthError = () => {
-    localStorage.removeItem('authToken');
-    toast.error('Your session has expired. Please login again.');
-    navigate('/login');
+    localStorage.removeItem("authToken");
+    toast.error("Your session has expired. Please login again.");
+    navigate("/login");
+  };
+
+  // Fetch user profile and subscription info
+  const fetchUserProfile = async () => {
+    try {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        console.log("No authentication token found, skipping profile fetch");
+        return;
+      }
+
+      const response = await fetch("http://localhost:3000/auth/profile", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("User profile from backend:", data.user);
+        console.log("🔍 PREMIUM DEBUG - Raw subscription data:", {
+          subscription: data.user.subscription,
+          isPremium: data.user.isPremium,
+          subscriptionExpiry: data.user.subscriptionExpiry,
+        });
+
+        setUserProfile(data.user);
+        const subscriptionValue = data.user.subscription || "free";
+        const isPremiumValue = data.user.isPremium || false;
+
+        setUserSubscription(subscriptionValue);
+        setIsPremium(isPremiumValue);
+
+        console.log("🎯 PREMIUM DEBUG - State values set:", {
+          userSubscription: subscriptionValue,
+          isPremium: isPremiumValue,
+        });
+      } else if (response.status === 401) {
+        console.error("Authentication failed - redirecting to login");
+        handleAuthError();
+        return;
+      } else {
+        console.error(
+          "Failed to fetch user profile:",
+          response.status,
+          response.statusText
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch user profile:", error);
+    }
+  };
+
+  // Function to fetch single video by ID
+  const fetchVideoById = async (videoId) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(`${API_BASE_URL}/videos/${videoId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.video;
+      } else {
+        console.error("Failed to fetch video:", response.status);
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching video:", error);
+      return null;
+    }
   };
 
   // Start video analysis for selected video
   const startVideoAnalysis = async (video) => {
     try {
-      const token = localStorage.getItem('authToken');
-      
+      const token = localStorage.getItem("authToken");
+
       if (!token) {
-        toast.error('Please login to access video analysis features.');
-        navigate('/login');
+        toast.error("Please login to access video analysis features.");
+        navigate("/login");
         return;
       }
 
       // Show loading toast
-      toast.loading('Starting video analysis...', { id: 'video-analysis' });
+      toast.loading("Starting video analysis...", { id: "video-analysis" });
 
-      const response = await fetch(`http://localhost:3000/videos/${video._id}/analyze`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `http://localhost:3000/videos/${video._id}/analyze`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Analysis response:', data);
-        
+        console.log("Analysis response:", data);
+
         // Handle different analysis states
-        if (data.status === 'processing' && data.message === 'Analysis already in progress') {
-          toast.success('Analisis video sedang berjalan. Menampilkan progress...', { 
-            id: 'video-analysis',
-            duration: 3000
-          });
-          
+        if (
+          data.status === "processing" &&
+          data.message === "Analysis already in progress"
+        ) {
+          toast.success(
+            "Analisis video sedang berjalan. Menampilkan progress...",
+            {
+              id: "video-analysis",
+              duration: 3000,
+            }
+          );
+
           // Show progress modal for already running analysis
           setAnalysisVideo(video);
           setShowAnalysisProgress(true);
-          
-        } else if (data.status === 'processing' && data.message === 'Video analysis started') {
-          toast.success('Video analysis started successfully!', { id: 'video-analysis' });
-          
+        } else if (
+          data.status === "processing" &&
+          data.message === "Video analysis started"
+        ) {
+          toast.success("Video analysis started successfully!", {
+            id: "video-analysis",
+          });
+
           // Show progress modal for newly started analysis
           setAnalysisVideo(video);
           setShowAnalysisProgress(true);
         }
-        
       } else if (response.status === 401) {
         handleAuthError();
         return;
       } else {
         const errorData = await response.json();
-        toast.error(errorData.error || 'Failed to start video analysis', { id: 'video-analysis' });
+        toast.error(errorData.error || "Failed to start video analysis", {
+          id: "video-analysis",
+        });
       }
     } catch (error) {
-      console.error('Error starting video analysis:', error);
-      toast.error('Network error occurred while starting analysis', { id: 'video-analysis' });
+      console.error("Error starting video analysis:", error);
+      toast.error("Network error occurred while starting analysis", {
+        id: "video-analysis",
+      });
     }
   };
 
   // Send video chat message
   const sendVideoChatMessage = async () => {
-    if (!videoChatInput.trim() || !selectedVideo || !selectedVideo.hasAIAnalysis) return;
+    if (
+      !videoChatInput.trim() ||
+      !selectedVideo ||
+      !selectedVideo.hasAIAnalysis
+    )
+      return;
 
     const userMessage = {
       id: Date.now(),
       text: videoChatInput,
-      sender: 'user',
-      timestamp: new Date()
+      sender: "user",
+      timestamp: new Date(),
     };
 
-    setVideoChatMessages(prev => [...prev, userMessage]);
-    setVideoChatInput('');
+    setVideoChatMessages((prev) => [...prev, userMessage]);
+    setVideoChatInput("");
     setIsVideoChatLoading(true);
 
     try {
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:3000/videos/${selectedVideo._id}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          message: videoChatInput,
-          context: {
-            transcript: selectedVideo.aiAnalysis?.transcript,
-            analysis: selectedVideo.aiAnalysis?.analysis,
-            suggestions: selectedVideo.aiAnalysis?.suggestions
-          }
-        })
-      });
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(
+        `http://localhost:3000/videos/${selectedVideo._id}/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            message: videoChatInput,
+            context: {
+              transcript: selectedVideo.aiAnalysis?.transcript,
+              analysis: selectedVideo.aiAnalysis?.analysis,
+              suggestions: selectedVideo.aiAnalysis?.suggestions,
+            },
+          }),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
         const aiMessage = {
           id: Date.now() + 1,
           text: data.response,
-          sender: 'ai',
-          timestamp: new Date()
+          sender: "ai",
+          timestamp: new Date(),
         };
-        setVideoChatMessages(prev => [...prev, aiMessage]);
+        setVideoChatMessages((prev) => [...prev, aiMessage]);
       } else {
-        throw new Error('Failed to get AI response');
+        throw new Error("Failed to get AI response");
       }
     } catch (error) {
-      console.error('Chat error:', error);
+      console.error("Chat error:", error);
       const errorMessage = {
         id: Date.now() + 1,
-        text: 'Maaf, terjadi kesalahan saat menghubungi AI. Silakan coba lagi.',
-        sender: 'ai',
-        timestamp: new Date()
+        text: "Maaf, terjadi kesalahan saat menghubungi AI. Silakan coba lagi.",
+        sender: "ai",
+        timestamp: new Date(),
       };
-      setVideoChatMessages(prev => [...prev, errorMessage]);
+      setVideoChatMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsVideoChatLoading(false);
     }
   };
 
   const handleVideoChatKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendVideoChatMessage();
     }
@@ -214,79 +328,120 @@ export default function CanvasPage() {
   // Delete video analysis
   const deleteVideoAnalysis = async (video) => {
     try {
-      const token = localStorage.getItem('authToken');
-      
+      const token = localStorage.getItem("authToken");
+
       if (!token) {
-        toast.error('Please login to access this feature.');
-        navigate('/login');
+        toast.error("Please login to access this feature.");
+        navigate("/login");
         return;
       }
 
       // Show confirmation
-      if (!window.confirm('Apakah Anda yakin ingin menghapus analisis AI untuk video ini?')) {
+      if (
+        !window.confirm(
+          "Apakah Anda yakin ingin menghapus analisis AI untuk video ini?"
+        )
+      ) {
         return;
       }
 
-      toast.loading('Menghapus analisis AI...', { id: 'delete-analysis' });
+      toast.loading("Menghapus analisis AI...", { id: "delete-analysis" });
 
-      const response = await fetch(`http://localhost:3000/videos/${video._id}/analysis`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `http://localhost:3000/videos/${video._id}/analysis`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
 
       if (response.ok) {
-        toast.success('Analisis AI berhasil dihapus!', { id: 'delete-analysis' });
-        
+        toast.success("Analisis AI berhasil dihapus!", {
+          id: "delete-analysis",
+        });
+
         // Update video in state - reset all AI-related fields
         const updatedVideo = {
           ...video,
           hasAIAnalysis: false,
           hasTranscript: false,
           transcript: undefined,
-          transcript_status: 'pending',
+          transcript_status: "pending",
           transcript_metadata: undefined,
           aiAnalysis: undefined,
           aiSuggestions: undefined,
-          analysis_status: 'pending'
+          analysis_status: "pending",
         };
 
         // Update selected video
         setSelectedVideo(updatedVideo);
 
         // Update videos list
-        setVideos(prevVideos => 
-          prevVideos.map(v => 
-            v._id === video._id ? updatedVideo : v
-          )
+        setVideos((prevVideos) =>
+          prevVideos.map((v) => (v._id === video._id ? updatedVideo : v))
         );
 
         // Clear chat messages and reset chat input
         setVideoChatMessages([]);
-        setVideoChatInput('');
+        setVideoChatInput("");
         setIsVideoChatLoading(false);
-        
       } else if (response.status === 401) {
         handleAuthError();
         return;
       } else {
         const errorData = await response.json();
-        toast.error(errorData.error || 'Gagal menghapus analisis AI', { id: 'delete-analysis' });
+        toast.error(errorData.error || "Gagal menghapus analisis AI", {
+          id: "delete-analysis",
+        });
       }
     } catch (error) {
-      console.error('Error deleting video analysis:', error);
-      toast.error('Network error occurred while deleting analysis', { id: 'delete-analysis' });
+      console.error("Error deleting video analysis:", error);
+      toast.error("Network error occurred while deleting analysis", {
+        id: "delete-analysis",
+      });
     }
   };
 
   // Auto-scroll chat to bottom when new messages arrive
   React.useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
     }
   }, [videoChatMessages, isVideoChatLoading]);
+
+  // Watch for selectedVideo changes to ensure UI updates
+  React.useEffect(() => {
+    if (selectedVideo) {
+      console.log("📋 SelectedVideo changed:", {
+        id: selectedVideo._id,
+        title: selectedVideo.title,
+        hasAIAnalysis: selectedVideo.hasAIAnalysis,
+        hasTranscript: selectedVideo.hasTranscript,
+        transcript: !!selectedVideo.transcript,
+        analysis: !!selectedVideo.analysis,
+      });
+
+      // Only auto-switch if we're not already in discuss mode
+      // This prevents forced switching when user manually selects videos
+      // Auto-switch only happens from completion callback, not from selection
+    }
+  }, [selectedVideo]);
+
+  // Watch for videoChatMessages changes
+  React.useEffect(() => {
+    console.log("💬 VideoChatMessages changed:", {
+      count: videoChatMessages.length,
+      messages: videoChatMessages.map((msg) => ({
+        id: msg.id,
+        sender: msg.sender,
+        messagePreview: msg.message?.substring(0, 50) + "...",
+      })),
+    });
+  }, [videoChatMessages]);
 
   // Fetch personas and load chat history on component mount
   React.useEffect(() => {
@@ -296,11 +451,12 @@ export default function CanvasPage() {
     setShowPersonaSelection(true);
     setChatMessages([]);
     setGeneratedContent(null);
-    
+
     // Wait for auth token to be available
     const checkTokenAndFetch = () => {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       if (token) {
+        fetchUserProfile();
         fetchPersonas();
         loadChatHistory();
       } else {
@@ -308,7 +464,7 @@ export default function CanvasPage() {
         setTimeout(checkTokenAndFetch, 100);
       }
     };
-    
+
     checkTokenAndFetch();
 
     // Cleanup function - deactivate all personas when component unmounts
@@ -327,26 +483,35 @@ export default function CanvasPage() {
   // Function to deactivate all personas
   const deactivateAllPersonas = async () => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       if (!token) {
-        console.log('No authentication token found, skipping persona deactivation');
+        console.log(
+          "No authentication token found, skipping persona deactivation"
+        );
         return;
       }
-      
-      const response = await fetch('http://localhost:3000/personas/deactivate-all', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({})
-      });
-      
+
+      const response = await fetch(
+        "http://localhost:3000/personas/deactivate-all",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({}),
+        }
+      );
+
       if (!response.ok) {
-        console.log('Failed to deactivate personas:', response.status, response.statusText);
+        console.log(
+          "Failed to deactivate personas:",
+          response.status,
+          response.statusText
+        );
       }
     } catch (error) {
-      console.error('Error deactivating personas:', error);
+      console.error("Error deactivating personas:", error);
     }
   };
 
@@ -356,20 +521,20 @@ export default function CanvasPage() {
       if (selectedPersona) {
         try {
           // Check if persona is still active and update lastUsedAt
-          const token = localStorage.getItem('authToken');
+          const token = localStorage.getItem("authToken");
           await fetch(`http://localhost:3000/personas/${selectedPersona._id}`, {
-            method: 'PUT',
+            method: "PUT",
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
               ...selectedPersona,
-              lastUsedAt: new Date()
-            })
+              lastUsedAt: new Date(),
+            }),
           });
         } catch (error) {
-          console.error('Error updating persona activity:', error);
+          console.error("Error updating persona activity:", error);
         }
       }
     }, 5 * 60 * 1000); // 5 minutes
@@ -380,19 +545,19 @@ export default function CanvasPage() {
   const fetchPersonas = async () => {
     try {
       console.log("Fetching personas from MongoDB...");
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       if (!token) {
-        console.log('No authentication token found, skipping persona fetch');
+        console.log("No authentication token found, skipping persona fetch");
         setPersonas([]);
         return;
       }
-      
+
       const response = await fetch("http://localhost:3000/personas/", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
       if (response.ok) {
         const data = await response.json();
@@ -403,7 +568,11 @@ export default function CanvasPage() {
         handleAuthError();
         return;
       } else {
-        console.error("Failed to fetch personas:", response.status, response.statusText);
+        console.error(
+          "Failed to fetch personas:",
+          response.status,
+          response.statusText
+        );
         setPersonas([]); // Clear personas if fetch fails
       }
     } catch (error) {
@@ -416,13 +585,13 @@ export default function CanvasPage() {
     try {
       setLoadingVideos(true);
       console.log("Fetching videos from MongoDB...");
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       if (!token) {
-        console.log('No authentication token found, skipping video fetch');
+        console.log("No authentication token found, skipping video fetch");
         setVideos([]);
         return;
       }
-      
+
       const response = await api.get("/videos");
       if (response.data && response.data.items) {
         console.log("Videos from MongoDB:", response.data.items);
@@ -442,34 +611,38 @@ export default function CanvasPage() {
   const handlePersonaSelect = async (persona) => {
     try {
       // Activate persona using the dedicated activate endpoint
-      const token = localStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:3000/personas/${persona._id}/activate`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({})
-      });
+      const token = localStorage.getItem("authToken");
+      const response = await fetch(
+        `http://localhost:3000/personas/${persona._id}/activate`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({}),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
         const updatedPersona = { ...persona, isActive: true };
-        
+
         // Update personas list
-        setPersonas(personas.map(p => 
-          p._id === persona._id 
-            ? updatedPersona 
-            : { ...p, isActive: false } // Deactivate other personas
-        ));
-        
+        setPersonas(
+          personas.map(
+            (p) =>
+              p._id === persona._id ? updatedPersona : { ...p, isActive: false } // Deactivate other personas
+          )
+        );
+
         setSelectedPersona(updatedPersona);
         setShowPersonaSelection(false);
         setChatMessages([
           {
             role: "assistant",
-            content: `Bagus! Anda memilih persona "${persona.name}" dengan niche ${persona.contentNiche}. Sekarang ceritakan ide konten video apa yang ingin Anda buat?`
-          }
+            content: `Bagus! Anda memilih persona "${persona.name}" dengan niche ${persona.contentNiche}. Sekarang ceritakan ide konten video apa yang ingin Anda buat?`,
+          },
         ]);
       } else {
         throw new Error("Failed to activate persona");
@@ -482,8 +655,8 @@ export default function CanvasPage() {
       setChatMessages([
         {
           role: "assistant",
-          content: `Persona "${persona.name}" dipilih. Ada kendala teknis dalam aktivasi, tapi Anda tetap bisa melanjutkan. Ceritakan ide konten video apa yang ingin Anda buat?`
-        }
+          content: `Persona "${persona.name}" dipilih. Ada kendala teknis dalam aktivasi, tapi Anda tetap bisa melanjutkan. Ceritakan ide konten video apa yang ingin Anda buat?`,
+        },
       ]);
     }
   };
@@ -493,9 +666,10 @@ export default function CanvasPage() {
     setShowPersonaSelection(false);
     setChatMessages([
       {
-        role: "assistant", 
-        content: "Mari buat persona creator baru! Silakan isi form di bawah untuk membuat persona yang sesuai dengan gaya konten Anda."
-      }
+        role: "assistant",
+        content:
+          "Mari buat persona creator baru! Silakan isi form di bawah untuk membuat persona yang sesuai dengan gaya konten Anda.",
+      },
     ]);
   };
 
@@ -504,63 +678,69 @@ export default function CanvasPage() {
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       const response = await fetch("http://localhost:3000/personas/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          ...personaFormData
-        })
+          ...personaFormData,
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
         const newPersona = { ...data.data.persona, isActive: true };
-        
+
         // Deactivate other personas and add new one
-        const updatedPersonas = personas.map(p => ({ ...p, isActive: false }));
+        const updatedPersonas = personas.map((p) => ({
+          ...p,
+          isActive: false,
+        }));
         setPersonas([...updatedPersonas, newPersona]);
-        
+
         // Activate the new persona
         try {
-          const token = localStorage.getItem('authToken');
-          await fetch(`http://localhost:3000/personas/${newPersona._id}/activate`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({})
-          });
+          const token = localStorage.getItem("authToken");
+          await fetch(
+            `http://localhost:3000/personas/${newPersona._id}/activate`,
+            {
+              method: "PUT",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({}),
+            }
+          );
         } catch (activationError) {
           console.error("Error activating new persona:", activationError);
         }
-        
+
         // Select the new persona
         setSelectedPersona(newPersona);
         setShowPersonaSelection(false);
         setShowCreatePersonaForm(false);
-        
+
         // Reset form
         setPersonaFormData({
-          name: '',
-          contentNiche: '',
-          platformPriority: '',
-          contentStyle: '',
-          brandVoice: '',
-          targetAudience: { ageGroup: '', location: '' },
-          videoDurationPreference: '',
-          contentGoals: []
+          name: "",
+          contentNiche: "",
+          platformPriority: "",
+          contentStyle: "",
+          brandVoice: "",
+          targetAudience: { ageGroup: "", location: "" },
+          videoDurationPreference: "",
+          contentGoals: [],
         });
 
         setChatMessages([
           {
             role: "assistant",
-            content: `Persona "${newPersona.name}" berhasil dibuat! Sekarang ceritakan ide konten video apa yang ingin Anda buat dengan persona ini?`
-          }
+            content: `Persona "${newPersona.name}" berhasil dibuat! Sekarang ceritakan ide konten video apa yang ingin Anda buat dengan persona ini?`,
+          },
         ]);
       } else if (response.status === 401) {
         handleAuthError();
@@ -575,8 +755,9 @@ export default function CanvasPage() {
       setChatMessages([
         {
           role: "assistant",
-          content: "Maaf, terjadi kesalahan saat membuat persona. Silakan coba lagi."
-        }
+          content:
+            "Maaf, terjadi kesalahan saat membuat persona. Silakan coba lagi.",
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -584,19 +765,19 @@ export default function CanvasPage() {
   };
 
   const handleFormInputChange = (field, value) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.');
-      setPersonaFormData(prev => ({
+    if (field.includes(".")) {
+      const [parent, child] = field.split(".");
+      setPersonaFormData((prev) => ({
         ...prev,
         [parent]: {
           ...prev[parent],
-          [child]: value
-        }
+          [child]: value,
+        },
       }));
     } else {
-      setPersonaFormData(prev => ({
+      setPersonaFormData((prev) => ({
         ...prev,
-        [field]: value
+        [field]: value,
       }));
     }
   };
@@ -604,28 +785,34 @@ export default function CanvasPage() {
   // Format AI response for better readability
   const formatAiResponse = (text) => {
     if (!text) return text;
-    
+
     // Clean up numbering patterns
     let formatted = text
       // Fix numbering format: "1. **Title**:" to "1. **Title**:"
-      .replace(/(\d+)\.\s*\*\*(.*?)\*\*:/g, '$1. **$2**:')
+      .replace(/(\d+)\.\s*\*\*(.*?)\*\*:/g, "$1. **$2**:")
       // Fix standalone bold text: ****text**** to **text**
-      .replace(/\*{4}([^*]+)\*{4}/g, '**$1**')
+      .replace(/\*{4}([^*]+)\*{4}/g, "**$1**")
       // Fix numbered lists with proper spacing
-      .replace(/(\d+)\.\s+/g, '\n$1. ')
+      .replace(/(\d+)\.\s+/g, "\n$1. ")
       // Add proper line breaks after colons in bold headings
-      .replace(/(\*\*[^*]+\*\*:)\s*/g, '$1\n')
+      .replace(/(\*\*[^*]+\*\*:)\s*/g, "$1\n")
       // Clean up multiple line breaks
-      .replace(/\n{3,}/g, '\n\n')
+      .replace(/\n{3,}/g, "\n\n")
       // Trim start
       .trim();
-    
+
     return formatted;
   };
 
   // Handle chat message sending
   const handleSendMessage = async () => {
-    if (!currentMessage.trim() || isLoading || showPersonaSelection || showCreatePersonaForm) return;
+    if (
+      !currentMessage.trim() ||
+      isLoading ||
+      showPersonaSelection ||
+      showCreatePersonaForm
+    )
+      return;
 
     const userMessage = { role: "user", content: currentMessage };
     const updatedMessages = [...chatMessages, userMessage];
@@ -635,22 +822,30 @@ export default function CanvasPage() {
 
     try {
       // Call chat API
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        console.log("No authentication token found, skipping profile fetch");
+        return;
+      }
       const response = await fetch("http://localhost:3000/ai/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           messages: updatedMessages,
           usePersona: selectedPersona ? true : false,
-          personaId: selectedPersona?._id
-        })
+          personaId: selectedPersona?._id,
+        }),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API Error Response:", errorText);
-        throw new Error(`Failed to get AI response: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to get AI response: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = await response.json();
@@ -660,17 +855,29 @@ export default function CanvasPage() {
       setChatMessages([...updatedMessages, aiMessage]);
 
       // If this looks like a content generation request, also generate full content
-      if (currentMessage.toLowerCase().includes("buat") || 
-          currentMessage.toLowerCase().includes("buatkan") ||
-          currentMessage.toLowerCase().includes("ide") ||
-          currentMessage.toLowerCase().includes("video") ||
-          currentMessage.toLowerCase().includes("konten")) {
+      console.log(
+        "🔍 Checking if message triggers content generation:",
+        currentMessage
+      );
+      const shouldGenerate =
+        currentMessage.toLowerCase().includes("buat") ||
+        currentMessage.toLowerCase().includes("buatkan") ||
+        currentMessage.toLowerCase().includes("ide") ||
+        currentMessage.toLowerCase().includes("video") ||
+        currentMessage.toLowerCase().includes("konten");
+
+      console.log("🔍 Should generate content:", shouldGenerate);
+
+      if (shouldGenerate) {
+        console.log("🚀 Starting content generation...");
         await generateFullContent(currentMessage);
       }
-
     } catch (error) {
       console.error("Chat error:", error);
-      const errorMessage = { role: "assistant", content: "Maaf, terjadi kesalahan. Silakan coba lagi." };
+      const errorMessage = {
+        role: "assistant",
+        content: "Maaf, terjadi kesalahan. Silakan coba lagi.",
+      };
       setChatMessages([...updatedMessages, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -680,24 +887,55 @@ export default function CanvasPage() {
   // Generate full content (script, storyboard, etc.)
   const generateFullContent = async (prompt) => {
     try {
-      const response = await fetch("http://localhost:3000/ai/generate-content", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          prompt: prompt,
-          usePersona: false // Disable persona for now
-        })
-      });
+      console.log("� Starting content generation for prompt:", prompt);
+      console.log("🔄 User subscription:", userSubscription);
 
-      if (!response.ok) throw new Error("Failed to generate content");
+      // Show loading modal
+      setShowContentGenerationProgress(true);
+      const token = localStorage.getItem("authToken");
+
+      const response = await fetch(
+        "http://localhost:3000/ai/generate-content",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            usePersona: false, // Disable persona for now
+            userSubscription: userSubscription, // Send user subscription for premium logic
+          }),
+        }
+      );
+
+      console.log("🔄 Content generation response status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Content generation failed:", errorText);
+        setShowContentGenerationProgress(false);
+        throw new Error("Failed to generate content");
+      }
 
       const data = await response.json();
+      console.log("🎉 Content generation successful:", data);
       setGeneratedContent(data.data.content);
 
+      // Hide loading modal
+      setShowContentGenerationProgress(false);
+
+      // Auto-switch to Create mode to show the generated content
+      setCanvasMode("create");
+
+      toast.success(
+        "Konten berhasil dibuat! Konten telah ditampilkan di tab Create."
+      );
     } catch (error) {
-      console.error("Content generation error:", error);
+      console.error("❌ Content generation error:", error);
+      setShowContentGenerationProgress(false);
+      toast.error("Gagal membuat konten. Silakan coba lagi.");
     }
   };
 
@@ -714,7 +952,7 @@ export default function CanvasPage() {
     setSelectedImage({
       url: imageUrl,
       sceneNumber: sceneIndex + 1,
-      scene: generatedContent?.storyboard[sceneIndex]
+      scene: generatedContent?.storyboard[sceneIndex],
     });
     setShowImageModal(true);
   };
@@ -728,107 +966,114 @@ export default function CanvasPage() {
   // Chat History Management Functions
   const loadChatHistory = async () => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       if (!token) {
         setChatSessions([]);
         return;
       }
 
-      const response = await fetch('http://localhost:3000/chat-sessions', {
-        method: 'GET',
+      const response = await fetch("http://localhost:3000/chat-sessions", {
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
       if (response.ok) {
         const data = await response.json();
         setChatSessions(data.data.sessions || []);
       } else {
-        console.error('Failed to load chat history:', response.status);
+        console.error("Failed to load chat history:", response.status);
         setChatSessions([]);
       }
     } catch (error) {
-      console.error('Error loading chat history:', error);
+      console.error("Error loading chat history:", error);
       setChatSessions([]);
     }
   };
 
   const saveChatSession = async (chatData) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       if (!token) {
-        console.error('No auth token found');
+        console.error("No auth token found");
         return null;
       }
 
       // Generate AI title for the chat
       const chatTitle = await generateChatTitle(chatData.messages);
-      
+
       const sessionData = {
         title: chatTitle,
         messages: chatData.messages,
         persona: chatData.persona,
-        generatedContent: chatData.generatedContent
+        generatedContent: chatData.generatedContent,
       };
 
-      const response = await fetch('http://localhost:3000/chat-sessions', {
-        method: 'POST',
+      const response = await fetch("http://localhost:3000/chat-sessions", {
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify(sessionData)
+        body: JSON.stringify(sessionData),
       });
 
       if (response.ok) {
         const data = await response.json();
         const newSession = data.data.session;
-        
+
         // Update local state
         const updatedSessions = [newSession, ...chatSessions];
         setChatSessions(updatedSessions);
-        
+
         return newSession;
       } else {
-        console.error('Failed to save chat session:', response.status);
+        console.error("Failed to save chat session:", response.status);
         return null;
       }
     } catch (error) {
-      console.error('Error saving chat session:', error);
+      console.error("Error saving chat session:", error);
       return null;
     }
   };
 
   const generateChatTitle = async (messages) => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return 'Chat Baru';
+      const token = localStorage.getItem("authToken");
+      if (!token) return "Chat Baru";
 
-      const response = await fetch('http://localhost:3000/chat-sessions/generate-title', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ messages })
-      });
+      const response = await fetch(
+        "http://localhost:3000/chat-sessions/generate-title",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ messages }),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
-        return data.data.title || 'Chat Baru';
+        return data.data.title || "Chat Baru";
       }
     } catch (error) {
-      console.error('Error generating chat title:', error);
+      console.error("Error generating chat title:", error);
     }
-    
+
     // Fallback title
-    const firstUserMessage = messages.find(m => m.role === 'user')?.content || '';
+    const firstUserMessage =
+      messages.find((m) => m.role === "user")?.content || "";
     if (firstUserMessage.length > 0) {
-      return firstUserMessage.substring(0, 30) + (firstUserMessage.length > 30 ? '...' : '');
+      return (
+        firstUserMessage.substring(0, 30) +
+        (firstUserMessage.length > 30 ? "..." : "")
+      );
     }
-    return 'Chat Baru';
+    return "Chat Baru";
   };
 
   const handleSelectChat = (session) => {
@@ -843,77 +1088,85 @@ export default function CanvasPage() {
   const handleNewChat = async () => {
     // Deactivate all personas when starting new chat
     await deactivateAllPersonas();
-    
+
     setCurrentChatId(null);
-    setChatMessages([{
-      role: "assistant",
-      content: "Halo! Sebelum kita mulai membuat konten, mari pilih persona creator Anda dulu. Apakah Anda ingin menggunakan persona yang sudah ada atau membuat persona baru?"
-    }]);
+    setChatMessages([
+      {
+        role: "assistant",
+        content:
+          "Halo! Sebelum kita mulai membuat konten, mari pilih persona creator Anda dulu. Apakah Anda ingin menggunakan persona yang sudah ada atau membuat persona baru?",
+      },
+    ]);
     setGeneratedContent(null);
     setCurrentMessage("");
     setSelectedPersona(null);
     setShowPersonaSelection(true);
     setShowCreatePersonaForm(false);
     setPersonaFormData({
-      name: '',
-      contentNiche: '',
-      platformPriority: '',
-      contentStyle: '',
-      brandVoice: '',
-      targetAudience: { ageGroup: '', location: 'indonesia' },
-      videoDurationPreference: '',
+      name: "",
+      contentNiche: "",
+      platformPriority: "",
+      contentStyle: "",
+      brandVoice: "",
+      targetAudience: { ageGroup: "", location: "indonesia" },
+      videoDurationPreference: "",
       contentGoals: [],
-      description: '',
+      description: "",
       keyTopics: [],
-      isActive: false
+      isActive: false,
     });
-    
+
     // Refresh personas to show updated active status
     fetchPersonas();
   };
 
   const handleDeleteChat = async (sessionId) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       if (!token) {
-        console.error('No auth token found');
+        console.error("No auth token found");
         return;
       }
 
-      const response = await fetch(`http://localhost:3000/chat-sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const response = await fetch(
+        `http://localhost:3000/chat-sessions/${sessionId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
 
       if (response.ok) {
         // Update local state
-        const updatedSessions = chatSessions.filter(session => session._id !== sessionId);
+        const updatedSessions = chatSessions.filter(
+          (session) => session._id !== sessionId
+        );
         setChatSessions(updatedSessions);
-        
+
         // If we're deleting the current chat, start a new one
         if (currentChatId === sessionId) {
           handleNewChat();
         }
       } else {
-        console.error('Failed to delete chat session:', response.status);
+        console.error("Failed to delete chat session:", response.status);
       }
     } catch (error) {
-      console.error('Error deleting chat session:', error);
+      console.error("Error deleting chat session:", error);
     }
   };
 
   const handleSaveCurrentChat = async () => {
     if (chatMessages.length <= 1) return; // Don't save empty chats
-    
+
     const chatData = {
       messages: chatMessages,
       persona: selectedPersona,
-      generatedContent: generatedContent
+      generatedContent: generatedContent,
     };
-    
+
     const savedSession = await saveChatSession(chatData);
     if (savedSession) {
       setCurrentChatId(savedSession.id);
@@ -936,7 +1189,8 @@ export default function CanvasPage() {
               {selectedPersona && (
                 <div className="mt-1 flex items-center gap-2">
                   <Badge variant="secondary" className="text-xs">
-                    Persona: {selectedPersona.name} ({selectedPersona.contentNiche})
+                    Persona: {selectedPersona.name} (
+                    {selectedPersona.contentNiche})
                   </Badge>
                 </div>
               )}
@@ -949,8 +1203,8 @@ export default function CanvasPage() {
               variant={canvasMode === "create" ? "default" : "outline"}
               onClick={() => setCanvasMode("create")}
               className={`flex items-center gap-2 ${
-                canvasMode === "create" 
-                  ? "bg-[#583377] hover:bg-[#583377]/90 text-white border-[#583377]" 
+                canvasMode === "create"
+                  ? "bg-[#583377] hover:bg-[#583377]/90 text-white border-[#583377]"
                   : "hover:bg-[#583377]/10 hover:text-[#583377] hover:border-[#583377]"
               }`}
             >
@@ -959,13 +1213,25 @@ export default function CanvasPage() {
             </Button>
             <Button
               variant={canvasMode === "discuss" ? "default" : "outline"}
-              onClick={() => setCanvasMode("discuss")}
+              onClick={() => {
+                if (userSubscription === "free") {
+                  toast.error(
+                    "Fitur ini hanya tersedia untuk pengguna premium. Upgrade akun Anda!"
+                  );
+                  return;
+                }
+                setCanvasMode("discuss");
+              }}
+              disabled={userSubscription === "free"}
               className={`flex items-center gap-2 ${
-                canvasMode === "discuss" 
-                  ? "bg-[#583377] hover:bg-[#583377]/90 text-white border-[#583377]" 
+                userSubscription === "free"
+                  ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-300"
+                  : canvasMode === "discuss"
+                  ? "bg-[#583377] hover:bg-[#583377]/90 text-white border-[#583377]"
                   : "hover:bg-[#583377]/10 hover:text-[#583377] hover:border-[#583377]"
               }`}
             >
+              {userSubscription === "free" && <Lock className="h-4 w-4" />}
               <Video className="h-4 w-4" />
               Diskusi Konten yang Ada
             </Button>
@@ -993,10 +1259,20 @@ export default function CanvasPage() {
                       onClick={() => setShowChatHistory(!showChatHistory)}
                       className="flex items-center gap-1"
                     >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
-                      {showChatHistory ? 'Sembunyikan' : 'History'}
+                      {showChatHistory ? "Sembunyikan" : "History"}
                     </Button>
                   </div>
                 </CardHeader>
@@ -1006,7 +1282,9 @@ export default function CanvasPage() {
                     {showChatHistory && (
                       <div className="rounded-xl border bg-white p-3 max-h-[120px] overflow-y-auto">
                         <div className="flex justify-between items-center mb-2">
-                          <div className="text-xs font-medium text-gray-600">Chat History</div>
+                          <div className="text-xs font-medium text-gray-600">
+                            Chat History
+                          </div>
                           <button
                             onClick={handleNewChat}
                             className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
@@ -1017,19 +1295,28 @@ export default function CanvasPage() {
                         {chatSessions.length > 0 ? (
                           <div className="space-y-1">
                             {chatSessions.map((session) => (
-                              <div key={session.id} className="flex items-center gap-1">
+                              <div
+                                key={session.id}
+                                className="flex items-center gap-1"
+                              >
                                 <button
                                   onClick={() => handleSelectChat(session)}
                                   className={`flex-1 text-left p-2 rounded-lg text-xs border transition-colors ${
-                                    currentChatId === session.id 
-                                      ? 'bg-blue-50 border-blue-200 text-blue-800' 
-                                      : 'hover:bg-gray-50 border-gray-200'
+                                    currentChatId === session.id
+                                      ? "bg-blue-50 border-blue-200 text-blue-800"
+                                      : "hover:bg-gray-50 border-gray-200"
                                   }`}
                                 >
-                                  <div className="font-medium truncate">{session.title}</div>
+                                  <div className="font-medium truncate">
+                                    {session.title}
+                                  </div>
                                   <div className="text-gray-500 text-xs">
-                                    {new Date(session.createdAt).toLocaleDateString('id-ID')} • 
-                                    {session.persona && ` ${session.persona.name}`}
+                                    {new Date(
+                                      session.createdAt
+                                    ).toLocaleDateString("id-ID")}{" "}
+                                    •
+                                    {session.persona &&
+                                      ` ${session.persona.name}`}
                                   </div>
                                 </button>
                                 <button
@@ -1040,15 +1327,27 @@ export default function CanvasPage() {
                                   className="p-1 text-red-500 hover:bg-red-50 rounded transition-colors"
                                   title="Hapus chat"
                                 >
-                                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  <svg
+                                    className="h-3 w-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
                                   </svg>
                                 </button>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="text-gray-500 text-xs">Belum ada history chat</div>
+                          <div className="text-gray-500 text-xs">
+                            Belum ada history chat
+                          </div>
                         )}
                       </div>
                     )}
@@ -1056,42 +1355,65 @@ export default function CanvasPage() {
                     <div className="flex-1 min-h-[400px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto">
                       <div className="text-sm space-y-3">
                         {chatMessages.map((message, index) => (
-                          <div 
-                            key={index} 
+                          <div
+                            key={index}
                             className={`p-3 rounded-lg shadow-sm ${
-                              message.role === 'assistant' ? 'bg-white' : 'bg-blue-50 ml-8'
+                              message.role === "assistant"
+                                ? "bg-white"
+                                : "bg-blue-50 ml-8"
                             }`}
                           >
-                            <strong>{message.role === 'assistant' ? 'AI:' : 'Anda:'}</strong> 
+                            <strong>
+                              {message.role === "assistant" ? "AI:" : "Anda:"}
+                            </strong>
                             <div className="mt-1 whitespace-pre-line">
-                              {message.content.split('\n').map((line, lineIndex) => {
-                                // Handle bold text **text**
-                                if (line.includes('**')) {
-                                  const parts = line.split(/(\*\*.*?\*\*)/g);
+                              {message.content
+                                .split("\n")
+                                .map((line, lineIndex) => {
+                                  // Handle bold text **text**
+                                  if (line.includes("**")) {
+                                    const parts = line.split(/(\*\*.*?\*\*)/g);
+                                    return (
+                                      <div
+                                        key={lineIndex}
+                                        className={lineIndex > 0 ? "mt-1" : ""}
+                                      >
+                                        {parts.map((part, partIndex) => {
+                                          if (
+                                            part.startsWith("**") &&
+                                            part.endsWith("**")
+                                          ) {
+                                            return (
+                                              <strong key={partIndex}>
+                                                {part.slice(2, -2)}
+                                              </strong>
+                                            );
+                                          }
+                                          return part;
+                                        })}
+                                      </div>
+                                    );
+                                  }
                                   return (
-                                    <div key={lineIndex} className={lineIndex > 0 ? 'mt-1' : ''}>
-                                      {parts.map((part, partIndex) => {
-                                        if (part.startsWith('**') && part.endsWith('**')) {
-                                          return <strong key={partIndex}>{part.slice(2, -2)}</strong>;
-                                        }
-                                        return part;
-                                      })}
+                                    <div
+                                      key={lineIndex}
+                                      className={lineIndex > 0 ? "mt-1" : ""}
+                                    >
+                                      {line}
                                     </div>
                                   );
-                                }
-                                return <div key={lineIndex} className={lineIndex > 0 ? 'mt-1' : ''}>{line}</div>;
-                              })}
+                                })}
                             </div>
                           </div>
                         ))}
-                        
+
                         {/* Persona Selection UI */}
                         {showPersonaSelection && !showCreatePersonaForm && (
                           <div className="p-3 bg-white rounded-lg shadow-sm border-2 border-blue-200">
                             <div className="mb-3">
                               <strong>Pilih Persona Creator:</strong>
                             </div>
-                            
+
                             {personas.length > 0 ? (
                               <div className="space-y-2 mb-3">
                                 {personas.map((persona) => (
@@ -1100,9 +1422,12 @@ export default function CanvasPage() {
                                     onClick={() => handlePersonaSelect(persona)}
                                     className="w-full text-left p-2 rounded-lg border hover:bg-blue-50 transition-colors"
                                   >
-                                    <div className="font-medium">{persona.name}</div>
+                                    <div className="font-medium">
+                                      {persona.name}
+                                    </div>
                                     <div className="text-xs text-gray-500">
-                                      {persona.contentNiche} • {persona.platformPriority}
+                                      {persona.contentNiche} •{" "}
+                                      {persona.platformPriority}
                                     </div>
                                   </button>
                                 ))}
@@ -1112,10 +1437,10 @@ export default function CanvasPage() {
                                 Belum ada persona yang tersedia
                               </div>
                             )}
-                            
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
+
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={handleCreateNewPersona}
                               className="w-full"
                             >
@@ -1130,25 +1455,42 @@ export default function CanvasPage() {
                             <div className="mb-3">
                               <strong>Buat Persona Creator Baru:</strong>
                             </div>
-                            
-                            <form onSubmit={handlePersonaFormSubmit} className="space-y-3">
+
+                            <form
+                              onSubmit={handlePersonaFormSubmit}
+                              className="space-y-3"
+                            >
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <label className="block text-xs font-medium mb-1">Nama Persona</label>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Nama Persona
+                                  </label>
                                   <input
                                     type="text"
                                     value={personaFormData.name}
-                                    onChange={(e) => handleFormInputChange('name', e.target.value)}
+                                    onChange={(e) =>
+                                      handleFormInputChange(
+                                        "name",
+                                        e.target.value
+                                      )
+                                    }
                                     className="w-full text-xs rounded border px-2 py-1"
                                     placeholder="e.g., Comedy Creator Budi"
                                     required
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium mb-1">Content Niche</label>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Content Niche
+                                  </label>
                                   <select
                                     value={personaFormData.contentNiche}
-                                    onChange={(e) => handleFormInputChange('contentNiche', e.target.value)}
+                                    onChange={(e) =>
+                                      handleFormInputChange(
+                                        "contentNiche",
+                                        e.target.value
+                                      )
+                                    }
                                     className="w-full text-xs rounded border px-2 py-1"
                                     required
                                   >
@@ -1166,7 +1508,9 @@ export default function CanvasPage() {
                                     <option value="music">Music</option>
                                     <option value="art">Art</option>
                                     <option value="business">Business</option>
-                                    <option value="motivation">Motivation</option>
+                                    <option value="motivation">
+                                      Motivation
+                                    </option>
                                     <option value="gaming">Gaming</option>
                                     <option value="diy">DIY</option>
                                     <option value="pets">Pets</option>
@@ -1177,62 +1521,116 @@ export default function CanvasPage() {
 
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <label className="block text-xs font-medium mb-1">Platform Utama</label>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Platform Utama
+                                  </label>
                                   <select
                                     value={personaFormData.platformPriority}
-                                    onChange={(e) => handleFormInputChange('platformPriority', e.target.value)}
+                                    onChange={(e) =>
+                                      handleFormInputChange(
+                                        "platformPriority",
+                                        e.target.value
+                                      )
+                                    }
                                     className="w-full text-xs rounded border px-2 py-1"
                                     required
                                   >
                                     <option value="">Pilih Platform</option>
-                                    <option value="instagram_reels">Instagram Reels</option>
+                                    <option value="instagram_reels">
+                                      Instagram Reels
+                                    </option>
                                     <option value="tiktok">TikTok</option>
-                                    <option value="both_equally">Both Equally</option>
+                                    <option value="both_equally">
+                                      Both Equally
+                                    </option>
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium mb-1">Gaya Konten</label>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Gaya Konten
+                                  </label>
                                   <select
                                     value={personaFormData.contentStyle}
-                                    onChange={(e) => handleFormInputChange('contentStyle', e.target.value)}
+                                    onChange={(e) =>
+                                      handleFormInputChange(
+                                        "contentStyle",
+                                        e.target.value
+                                      )
+                                    }
                                     className="w-full text-xs rounded border px-2 py-1"
                                     required
                                   >
                                     <option value="">Pilih Gaya</option>
-                                    <option value="trendy_viral">Trendy Viral</option>
-                                    <option value="educational">Educational</option>
-                                    <option value="behind_scenes">Behind Scenes</option>
-                                    <option value="product_showcase">Product Showcase</option>
-                                    <option value="storytelling">Storytelling</option>
+                                    <option value="trendy_viral">
+                                      Trendy Viral
+                                    </option>
+                                    <option value="educational">
+                                      Educational
+                                    </option>
+                                    <option value="behind_scenes">
+                                      Behind Scenes
+                                    </option>
+                                    <option value="product_showcase">
+                                      Product Showcase
+                                    </option>
+                                    <option value="storytelling">
+                                      Storytelling
+                                    </option>
                                     <option value="tutorial">Tutorial</option>
-                                    <option value="entertainment">Entertainment</option>
-                                    <option value="inspirational">Inspirational</option>
+                                    <option value="entertainment">
+                                      Entertainment
+                                    </option>
+                                    <option value="inspirational">
+                                      Inspirational
+                                    </option>
                                   </select>
                                 </div>
                               </div>
 
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <label className="block text-xs font-medium mb-1">Brand Voice</label>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Brand Voice
+                                  </label>
                                   <select
                                     value={personaFormData.brandVoice}
-                                    onChange={(e) => handleFormInputChange('brandVoice', e.target.value)}
+                                    onChange={(e) =>
+                                      handleFormInputChange(
+                                        "brandVoice",
+                                        e.target.value
+                                      )
+                                    }
                                     className="w-full text-xs rounded border px-2 py-1"
                                     required
                                   >
                                     <option value="">Pilih Voice</option>
-                                    <option value="fun_energetic">Fun Energetic</option>
-                                    <option value="professional">Professional</option>
+                                    <option value="fun_energetic">
+                                      Fun Energetic
+                                    </option>
+                                    <option value="professional">
+                                      Professional
+                                    </option>
                                     <option value="relatable">Relatable</option>
-                                    <option value="inspirational">Inspirational</option>
+                                    <option value="inspirational">
+                                      Inspirational
+                                    </option>
                                     <option value="humorous">Humorous</option>
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium mb-1">Durasi Video</label>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Durasi Video
+                                  </label>
                                   <select
-                                    value={personaFormData.videoDurationPreference}
-                                    onChange={(e) => handleFormInputChange('videoDurationPreference', e.target.value)}
+                                    value={
+                                      personaFormData.videoDurationPreference
+                                    }
+                                    onChange={(e) =>
+                                      handleFormInputChange(
+                                        "videoDurationPreference",
+                                        e.target.value
+                                      )
+                                    }
                                     className="w-full text-xs rounded border px-2 py-1"
                                     required
                                   >
@@ -1247,48 +1645,74 @@ export default function CanvasPage() {
 
                               <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                  <label className="block text-xs font-medium mb-1">Target Age</label>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Target Age
+                                  </label>
                                   <select
-                                    value={personaFormData.targetAudience.ageGroup}
-                                    onChange={(e) => handleFormInputChange('targetAudience.ageGroup', e.target.value)}
+                                    value={
+                                      personaFormData.targetAudience.ageGroup
+                                    }
+                                    onChange={(e) =>
+                                      handleFormInputChange(
+                                        "targetAudience.ageGroup",
+                                        e.target.value
+                                      )
+                                    }
                                     className="w-full text-xs rounded border px-2 py-1"
                                     required
                                   >
                                     <option value="">Pilih Age Group</option>
-                                    <option value="gen_z_16_24">Gen Z (16-24)</option>
-                                    <option value="millennials_25_40">Millennials (25-40)</option>
-                                    <option value="gen_x_41_56">Gen X (41-56)</option>
+                                    <option value="gen_z_16_24">
+                                      Gen Z (16-24)
+                                    </option>
+                                    <option value="millennials_25_40">
+                                      Millennials (25-40)
+                                    </option>
+                                    <option value="gen_x_41_56">
+                                      Gen X (41-56)
+                                    </option>
                                     <option value="all_ages">All Ages</option>
                                   </select>
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium mb-1">Target Location</label>
+                                  <label className="block text-xs font-medium mb-1">
+                                    Target Location
+                                  </label>
                                   <select
-                                    value={personaFormData.targetAudience.location}
-                                    onChange={(e) => handleFormInputChange('targetAudience.location', e.target.value)}
+                                    value={
+                                      personaFormData.targetAudience.location
+                                    }
+                                    onChange={(e) =>
+                                      handleFormInputChange(
+                                        "targetAudience.location",
+                                        e.target.value
+                                      )
+                                    }
                                     className="w-full text-xs rounded border px-2 py-1"
                                     required
                                   >
                                     <option value="">Pilih Location</option>
                                     <option value="indonesia">Indonesia</option>
-                                    <option value="southeast_asia">Southeast Asia</option>
+                                    <option value="southeast_asia">
+                                      Southeast Asia
+                                    </option>
                                     <option value="global">Global</option>
                                   </select>
                                 </div>
                               </div>
 
                               <div className="flex gap-2 pt-2">
-                                <Button 
-                                  type="submit" 
-                                  size="sm" 
+                                <Button
+                                  type="submit"
+                                  size="sm"
                                   disabled={isLoading}
                                   className="flex-1"
                                 >
                                   {isLoading ? "Membuat..." : "Buat Persona"}
                                 </Button>
-                                <Button 
+                                <Button
                                   type="button"
-                                  size="sm" 
+                                  size="sm"
                                   variant="outline"
                                   onClick={() => {
                                     setShowCreatePersonaForm(false);
@@ -1302,10 +1726,13 @@ export default function CanvasPage() {
                             </form>
                           </div>
                         )}
-                        
+
                         {isLoading && (
                           <div className="p-3 bg-white rounded-lg shadow-sm">
-                            <strong>AI:</strong> <span className="text-gray-500">Sedang mengetik...</span>
+                            <strong>AI:</strong>{" "}
+                            <span className="text-gray-500">
+                              Sedang mengetik...
+                            </span>
                           </div>
                         )}
                       </div>
@@ -1313,19 +1740,32 @@ export default function CanvasPage() {
                     <div className="flex gap-2 items-center">
                       <input
                         type="text"
-                        placeholder={showPersonaSelection || showCreatePersonaForm ? "Pilih atau buat persona terlebih dahulu..." : "Ketik pesan Anda..."}
+                        placeholder={
+                          showPersonaSelection || showCreatePersonaForm
+                            ? "Pilih atau buat persona terlebih dahulu..."
+                            : "Ketik pesan Anda..."
+                        }
                         value={currentMessage}
                         onChange={(e) => setCurrentMessage(e.target.value)}
                         onKeyPress={handleKeyPress}
-                        disabled={isLoading || showPersonaSelection || showCreatePersonaForm}
+                        disabled={
+                          isLoading ||
+                          showPersonaSelection ||
+                          showCreatePersonaForm
+                        }
                         className="flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 disabled:opacity-50"
                       />
 
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         className="h-10 w-10 p-0 bg-[#583377] hover:bg-[#4a2b65] text-white"
                         onClick={handleSendMessage}
-                        disabled={isLoading || !currentMessage.trim() || showPersonaSelection || showCreatePersonaForm}
+                        disabled={
+                          isLoading ||
+                          !currentMessage.trim() ||
+                          showPersonaSelection ||
+                          showCreatePersonaForm
+                        }
                       >
                         <Send className="h-4 w-4" />
                       </Button>
@@ -1351,10 +1791,25 @@ export default function CanvasPage() {
                     <Tabs defaultValue="script" className="w-full">
                       <TabsList className="grid w-full grid-cols-5">
                         <TabsTrigger value="script">Script</TabsTrigger>
-                        <TabsTrigger value="storyboard">Storyboard</TabsTrigger>
                         <TabsTrigger value="hooks">Hooks</TabsTrigger>
                         <TabsTrigger value="tags">Tags</TabsTrigger>
                         <TabsTrigger value="caption">Caption</TabsTrigger>
+                        <TabsTrigger
+                          value="storyboard"
+                          disabled={userSubscription === "free"}
+                          className={`relative ${
+                            userSubscription === "free"
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
+                        >
+                          <div className="flex items-center gap-1">
+                            {userSubscription === "free" && (
+                              <Lock className="h-3 w-3" />
+                            )}
+                            <span>Storyboard</span>
+                          </div>
+                        </TabsTrigger>
                       </TabsList>
                       <TabsContent value="script" className="mt-4">
                         <label className="block text-sm font-medium mb-2">
@@ -1363,61 +1818,97 @@ export default function CanvasPage() {
                         <div className="min-h-[200px] w-full rounded-xl border p-4 bg-white text-sm overflow-y-auto max-h-[400px]">
                           {generatedContent?.script ? (
                             <div className="script-content space-y-3">
-                              {generatedContent.script.split('\n').map((line, index) => {
-                                // Handle headers (##)
-                                if (line.startsWith('## ')) {
+                              {generatedContent.script
+                                .split("\n")
+                                .map((line, index) => {
+                                  // Handle headers (##)
+                                  if (line.startsWith("## ")) {
+                                    return (
+                                      <h3
+                                        key={index}
+                                        className="text-lg font-bold text-gray-800 mt-4 mb-2 border-b pb-1"
+                                      >
+                                        {line
+                                          .replace("## ", "")
+                                          .replace(/[\*\#]/g, "")}
+                                      </h3>
+                                    );
+                                  }
+                                  // Handle subheaders (###)
+                                  if (line.startsWith("### ")) {
+                                    return (
+                                      <h4
+                                        key={index}
+                                        className="text-base font-semibold text-gray-700 mt-3 mb-1"
+                                      >
+                                        {line
+                                          .replace("### ", "")
+                                          .replace(/[\*\#]/g, "")}
+                                      </h4>
+                                    );
+                                  }
+                                  // Handle bold text (**text**)
+                                  if (line.includes("**")) {
+                                    const parts = line.split(/(\*\*.*?\*\*)/g);
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="mb-1 leading-relaxed"
+                                      >
+                                        {parts.map((part, partIndex) => {
+                                          if (
+                                            part.startsWith("**") &&
+                                            part.endsWith("**")
+                                          ) {
+                                            return (
+                                              <strong
+                                                key={partIndex}
+                                                className="text-gray-800"
+                                              >
+                                                {part.slice(2, -2)}
+                                              </strong>
+                                            );
+                                          }
+                                          return (
+                                            <span key={partIndex}>{part}</span>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  }
+                                  // Handle bullet points (-)
+                                  if (line.trim().startsWith("- ")) {
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="ml-4 mb-1 text-gray-700"
+                                      >
+                                        <span className="mr-2">•</span>
+                                        {line.replace("- ", "")}
+                                      </div>
+                                    );
+                                  }
+                                  // Handle empty lines
+                                  if (line.trim() === "") {
+                                    return (
+                                      <div key={index} className="h-2"></div>
+                                    );
+                                  }
+                                  // Regular text
                                   return (
-                                    <h3 key={index} className="text-lg font-bold text-gray-800 mt-4 mb-2 border-b pb-1">
-                                      {line.replace('## ', '').replace(/[\*\#]/g, '')}
-                                    </h3>
-                                  );
-                                }
-                                // Handle subheaders (###)
-                                if (line.startsWith('### ')) {
-                                  return (
-                                    <h4 key={index} className="text-base font-semibold text-gray-700 mt-3 mb-1">
-                                      {line.replace('### ', '').replace(/[\*\#]/g, '')}
-                                    </h4>
-                                  );
-                                }
-                                // Handle bold text (**text**)
-                                if (line.includes('**')) {
-                                  const parts = line.split(/(\*\*.*?\*\*)/g);
-                                  return (
-                                    <div key={index} className="mb-1 leading-relaxed">
-                                      {parts.map((part, partIndex) => {
-                                        if (part.startsWith('**') && part.endsWith('**')) {
-                                          return <strong key={partIndex} className="text-gray-800">{part.slice(2, -2)}</strong>;
-                                        }
-                                        return <span key={partIndex}>{part}</span>;
-                                      })}
+                                    <div
+                                      key={index}
+                                      className="mb-1 text-gray-700 leading-relaxed"
+                                    >
+                                      {line}
                                     </div>
                                   );
-                                }
-                                // Handle bullet points (-)
-                                if (line.trim().startsWith('- ')) {
-                                  return (
-                                    <div key={index} className="ml-4 mb-1 text-gray-700">
-                                      <span className="mr-2">•</span>
-                                      {line.replace('- ', '')}
-                                    </div>
-                                  );
-                                }
-                                // Handle empty lines
-                                if (line.trim() === '') {
-                                  return <div key={index} className="h-2"></div>;
-                                }
-                                // Regular text
-                                return (
-                                  <div key={index} className="mb-1 text-gray-700 leading-relaxed">
-                                    {line}
-                                  </div>
-                                );
-                              })}
+                                })}
                             </div>
                           ) : (
                             <p className="text-gray-500 italic">
-                              Script akan muncul di sini setelah chat dengan AI...
+                              Script akan muncul di sini setelah chat dengan
+                              AI...
                             </p>
                           )}
                         </div>
@@ -1443,74 +1934,94 @@ export default function CanvasPage() {
                                 </tr>
                               </thead>
                               <tbody className="bg-white divide-y divide-gray-200">
-                                {generatedContent?.storyboard && generatedContent.storyboard.length > 0 ? (
-                                  generatedContent.storyboard.map((scene, index) => (
-                                    <tr key={index}>
-                                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                                        {scene.timestamp}
-                                      </td>
-                                      <td className="px-4 py-4 text-sm text-gray-900">
-                                        <div className="flex items-start gap-3">
-                                          {/* Visual Illustration */}
-                                          <div className="flex-shrink-0">
-                                            {scene.illustrationImage ? (
-                                              <div 
-                                                className="relative cursor-pointer group"
-                                                onClick={() => handleImageClick(scene.illustrationImage, index)}
-                                              >
-                                                <img 
-                                                  src={scene.illustrationImage} 
-                                                  alt={`Scene ${index + 1} illustration`}
-                                                  className="w-24 h-14 object-cover rounded-lg border shadow-sm group-hover:opacity-80 transition-opacity"
-                                                  onError={(e) => {
-                                                    e.target.style.display = 'none';
-                                                    e.target.nextSibling.style.display = 'flex';
-                                                  }}
-                                                />
-                                                <div className="w-24 h-14 bg-gray-100 rounded-lg border flex items-center justify-center text-xs text-gray-500 hidden">
-                                                  No Image
-                                                </div>
-                                                {scene.generationSuccess === false && (
-                                                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full" title="Image generation failed, using placeholder"></div>
-                                                )}
-                                                {/* Click indicator - using pointer-events-none to not block clicks */}
-                                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
-                                                  <div className="text-white text-xs font-medium bg-black bg-opacity-50 px-2 py-1 rounded">
-                                                    🔍 Click to enlarge
+                                {generatedContent?.storyboard &&
+                                generatedContent.storyboard.length > 0 ? (
+                                  generatedContent.storyboard.map(
+                                    (scene, index) => (
+                                      <tr key={index}>
+                                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                                          {scene.timestamp}
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-gray-900">
+                                          <div className="flex items-start gap-3">
+                                            {/* Visual Illustration */}
+                                            <div className="flex-shrink-0">
+                                              {scene.illustrationImage ? (
+                                                <div
+                                                  className="relative cursor-pointer group"
+                                                  onClick={() =>
+                                                    handleImageClick(
+                                                      scene.illustrationImage,
+                                                      index
+                                                    )
+                                                  }
+                                                >
+                                                  <img
+                                                    src={
+                                                      scene.illustrationImage
+                                                    }
+                                                    alt={`Scene ${
+                                                      index + 1
+                                                    } illustration`}
+                                                    className="w-24 h-14 object-cover rounded-lg border shadow-sm group-hover:opacity-80 transition-opacity"
+                                                    onError={(e) => {
+                                                      e.target.style.display =
+                                                        "none";
+                                                      e.target.nextSibling.style.display =
+                                                        "flex";
+                                                    }}
+                                                  />
+                                                  <div className="w-24 h-14 bg-gray-100 rounded-lg border flex items-center justify-center text-xs text-gray-500 hidden">
+                                                    No Image
+                                                  </div>
+                                                  {scene.generationSuccess ===
+                                                    false && (
+                                                    <div
+                                                      className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"
+                                                      title="Image generation failed, using placeholder"
+                                                    ></div>
+                                                  )}
+                                                  {/* Click indicator - using pointer-events-none to not block clicks */}
+                                                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none">
+                                                    <div className="text-white text-xs font-medium bg-black bg-opacity-50 px-2 py-1 rounded">
+                                                      🔍 Click to enlarge
+                                                    </div>
                                                   </div>
                                                 </div>
-                                              </div>
-                                            ) : (
-                                              <div className="w-24 h-14 bg-gray-100 rounded-lg border flex items-center justify-center">
-                                                <div className="text-xs text-gray-400 text-center">
-                                                  <div>📷</div>
-                                                  <div>Loading...</div>
+                                              ) : (
+                                                <div className="w-24 h-14 bg-gray-100 rounded-lg border flex items-center justify-center">
+                                                  <div className="text-xs text-gray-400 text-center">
+                                                    <div>📷</div>
+                                                    <div>Loading...</div>
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                          
-                                          {/* Scene Info */}
-                                          <div className="flex-1 min-w-0">
-                                            <div className="font-medium">Scene {index + 1}</div>
-                                            <div className="text-gray-600 text-sm mt-1">
-                                              {scene.illustration}
+                                              )}
                                             </div>
-                                            {generatedContent.hasVisualStoryboard && (
-                                              <div className="mt-1">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                                  ✨ AI Generated
-                                                </span>
+
+                                            {/* Scene Info */}
+                                            <div className="flex-1 min-w-0">
+                                              <div className="font-medium">
+                                                Scene {index + 1}
                                               </div>
-                                            )}
+                                              <div className="text-gray-600 text-sm mt-1">
+                                                {scene.illustration}
+                                              </div>
+                                              {generatedContent.hasVisualStoryboard && (
+                                                <div className="mt-1">
+                                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                    ✨ AI Generated
+                                                  </span>
+                                                </div>
+                                              )}
+                                            </div>
                                           </div>
-                                        </div>
-                                      </td>
-                                      <td className="px-4 py-4 text-sm text-gray-600">
-                                        {scene.description}
-                                      </td>
-                                    </tr>
-                                  ))
+                                        </td>
+                                        <td className="px-4 py-4 text-sm text-gray-600">
+                                          {scene.description}
+                                        </td>
+                                      </tr>
+                                    )
+                                  )
                                 ) : (
                                   <tr>
                                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -1525,9 +2036,12 @@ export default function CanvasPage() {
                                           </div>
                                         </div>
                                         <div className="flex-1">
-                                          <div className="font-medium">Opening shot</div>
+                                          <div className="font-medium">
+                                            Opening shot
+                                          </div>
                                           <div className="text-gray-500 text-xs mt-1">
-                                            Storyboard akan muncul setelah chat dengan AI...
+                                            Storyboard akan muncul setelah chat
+                                            dengan AI...
                                           </div>
                                         </div>
                                       </div>
@@ -1545,17 +2059,22 @@ export default function CanvasPage() {
                           {generatedContent?.hasVisualStoryboard ? (
                             <div className="flex items-center gap-2">
                               <span className="flex items-center gap-1">
-                                ✨ <strong>Visual Storyboard:</strong> Ilustrasi gambar telah dihasilkan dengan Seedreams AI
+                                ✨ <strong>Visual Storyboard:</strong> Ilustrasi
+                                gambar telah dihasilkan dengan Seedreams AI
                               </span>
                             </div>
                           ) : generatedContent?.visualError ? (
                             <div className="flex items-center gap-2 text-yellow-600">
                               <span className="flex items-center gap-1">
-                                ⚠️ <strong>Fallback Mode:</strong> {generatedContent.visualError}
+                                ⚠️ <strong>Fallback Mode:</strong>{" "}
+                                {generatedContent.visualError}
                               </span>
                             </div>
                           ) : (
-                            <span>💡 Storyboard akan menampilkan ilustrasi visual per scene setelah AI memproses konten Anda</span>
+                            <span>
+                              💡 Storyboard akan menampilkan ilustrasi visual
+                              per scene setelah AI memproses konten Anda
+                            </span>
                           )}
                         </div>
                       </TabsContent>
@@ -1564,12 +2083,15 @@ export default function CanvasPage() {
                           Ide Hook Pembuka
                         </label>
                         <div className="space-y-3">
-                          {generatedContent?.hooks && generatedContent.hooks.length > 0 ? (
+                          {generatedContent?.hooks &&
+                          generatedContent.hooks.length > 0 ? (
                             generatedContent.hooks.map((hook, index) => (
                               <input
                                 key={index}
                                 value={hook}
-                                placeholder={`Hook ${index + 1} akan muncul di sini...`}
+                                placeholder={`Hook ${
+                                  index + 1
+                                } akan muncul di sini...`}
                                 className="w-full rounded-xl border p-3 text-sm"
                                 readOnly
                               />
@@ -1600,10 +2122,15 @@ export default function CanvasPage() {
                           Tags yang Direkomendasikan
                         </label>
                         <div className="min-h-[100px] w-full rounded-xl border p-3 bg-slate-50/50">
-                          {generatedContent?.tags && generatedContent.tags.length > 0 ? (
+                          {generatedContent?.tags &&
+                          generatedContent.tags.length > 0 ? (
                             <div className="flex flex-wrap gap-2">
                               {generatedContent.tags.map((tag, index) => (
-                                <Badge key={index} variant="secondary" className="text-sm">
+                                <Badge
+                                  key={index}
+                                  variant="secondary"
+                                  className="text-sm"
+                                >
                                   #{tag}
                                 </Badge>
                               ))}
@@ -1631,47 +2158,53 @@ export default function CanvasPage() {
                   <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-xs text-slate-600">
                       {generatedContent ? (
-                        <span className="text-green-600">✅ Konten telah dihasilkan AI - {generatedContent.estimatedDuration || 'N/A'}</span>
+                        <span className="text-green-600">
+                          ✅ Konten telah dihasilkan AI -{" "}
+                          {generatedContent.estimatedDuration || "N/A"}
+                        </span>
                       ) : (
                         <span>Hasil akan muncul setelah chat dengan AI</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button 
+                      <Button
                         variant="secondary"
                         size="sm"
                         onClick={async () => {
                           // Deactivate all personas when resetting
                           await deactivateAllPersonas();
-                          
-                          setChatMessages([{
-                            role: "assistant",
-                            content: "Halo! Sebelum kita mulai membuat konten, mari pilih persona creator Anda dulu. Apakah Anda ingin menggunakan persona yang sudah ada atau membuat persona baru?"
-                          }]);
+
+                          setChatMessages([
+                            {
+                              role: "assistant",
+                              content:
+                                "Halo! Sebelum kita mulai membuat konten, mari pilih persona creator Anda dulu. Apakah Anda ingin menggunakan persona yang sudah ada atau membuat persona baru?",
+                            },
+                          ]);
                           setGeneratedContent(null);
                           setCurrentMessage("");
                           setSelectedPersona(null);
                           setShowPersonaSelection(true);
                           setShowCreatePersonaForm(false);
                           setPersonaFormData({
-                            name: '',
-                            contentNiche: '',
-                            platformPriority: '',
-                            contentStyle: '',
-                            brandVoice: '',
-                            targetAudience: { ageGroup: '', location: '' },
-                            videoDurationPreference: '',
-                            contentGoals: []
+                            name: "",
+                            contentNiche: "",
+                            platformPriority: "",
+                            contentStyle: "",
+                            brandVoice: "",
+                            targetAudience: { ageGroup: "", location: "" },
+                            videoDurationPreference: "",
+                            contentGoals: [],
                           });
-                          
+
                           // Refresh personas to show updated active status
                           fetchPersonas();
                         }}
                       >
                         Reset Chat
                       </Button>
-                      <Button 
-                        disabled={!generatedContent || chatMessages.length <= 1} 
+                      <Button
+                        disabled={!generatedContent || chatMessages.length <= 1}
                         size="sm"
                         className="bg-[#583377] hover:bg-[#4a2b65] text-white"
                         onClick={handleSaveCurrentChat}
@@ -1704,12 +2237,18 @@ export default function CanvasPage() {
                     <div className="max-h-80 overflow-y-auto space-y-2">
                       {loadingVideos ? (
                         <div className="text-center py-8">
-                          <div className="text-sm text-slate-500">Memuat video...</div>
+                          <div className="text-sm text-slate-500">
+                            Memuat video...
+                          </div>
                         </div>
                       ) : videos.length === 0 ? (
                         <div className="text-center py-8">
-                          <div className="text-sm text-slate-500">Belum ada video tersedia</div>
-                          <div className="text-xs text-slate-400 mt-1">Upload video terlebih dahulu</div>
+                          <div className="text-sm text-slate-500">
+                            Belum ada video tersedia
+                          </div>
+                          <div className="text-xs text-slate-400 mt-1">
+                            Upload video terlebih dahulu
+                          </div>
                         </div>
                       ) : (
                         videos.map((video) => (
@@ -1745,11 +2284,20 @@ export default function CanvasPage() {
                                 </p>
                                 <div className="flex items-center gap-2 mt-2">
                                   <span className="text-xs text-slate-400">
-                                    {video.duration_sec ? `${Math.floor(video.duration_sec / 60)}:${(video.duration_sec % 60).toString().padStart(2, '0')}` : ""}
+                                    {video.duration_sec
+                                      ? `${Math.floor(
+                                          video.duration_sec / 60
+                                        )}:${(video.duration_sec % 60)
+                                          .toString()
+                                          .padStart(2, "0")}`
+                                      : ""}
                                   </span>
                                   {video.hashtags && (
                                     <span className="text-xs text-blue-600">
-                                      {video.hashtags.split(' ').slice(0, 2).join(' ')}
+                                      {video.hashtags
+                                        .split(" ")
+                                        .slice(0, 2)
+                                        .join(" ")}
                                     </span>
                                   )}
                                 </div>
@@ -1768,10 +2316,15 @@ export default function CanvasPage() {
                           Video Terpilih
                         </div>
                         <div className="text-sm text-blue-700">
-                          <div className="font-medium">{selectedVideo.title || "Video tanpa judul"}</div>
+                          <div className="font-medium">
+                            {selectedVideo.title || "Video tanpa judul"}
+                          </div>
                           <div className="text-xs text-blue-600 mt-1">
-                            {selectedVideo.caption && selectedVideo.caption.substring(0, 100)}
-                            {selectedVideo.caption && selectedVideo.caption.length > 100 && "..."}
+                            {selectedVideo.caption &&
+                              selectedVideo.caption.substring(0, 100)}
+                            {selectedVideo.caption &&
+                              selectedVideo.caption.length > 100 &&
+                              "..."}
                           </div>
                         </div>
                       </div>
@@ -1782,10 +2335,12 @@ export default function CanvasPage() {
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <Video className="h-4 w-4" />
-                          <span className="font-medium">Analisis Video dengan AI</span>
+                          <span className="font-medium">
+                            Analisis Video dengan AI
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button 
+                          <Button
                             onClick={() => {
                               if (selectedVideo) {
                                 // Langsung mulai analisis video yang sudah dipilih
@@ -1794,16 +2349,21 @@ export default function CanvasPage() {
                               // Jika belum ada video dipilih, tombol tidak melakukan apa-apa (disabled)
                             }}
                             disabled={!selectedVideo}
-                            className={selectedVideo 
-                              ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                              : "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300"
+                            className={
+                              selectedVideo
+                                ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+                                : "bg-gray-300 text-gray-500 cursor-not-allowed hover:bg-gray-300"
                             }
                             size="sm"
                           >
-                            <Sparkles className={`mr-1 h-3 w-3 ${selectedVideo ? 'text-white' : 'text-gray-400'}`} />
+                            <Sparkles
+                              className={`mr-1 h-3 w-3 ${
+                                selectedVideo ? "text-white" : "text-gray-400"
+                              }`}
+                            />
                             Start Analysis
                           </Button>
-                          
+
                           {/* Tombol Hapus Analisis AI */}
                           {selectedVideo && selectedVideo.hasAIAnalysis && (
                             <Button
@@ -1818,37 +2378,61 @@ export default function CanvasPage() {
                           )}
                         </div>
                       </div>
-                      <div ref={chatContainerRef} className="flex-1 min-h-[300px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3">
+                      <div
+                        ref={chatContainerRef}
+                        className="flex-1 min-h-[300px] rounded-xl border bg-slate-50/50 p-4 overflow-y-auto mb-3"
+                      >
                         <div className="text-sm text-slate-600">
                           {/* Initial AI Message */}
                           {videoChatMessages.length === 0 && (
                             <>
                               <div className="mb-4 p-3 bg-white rounded-lg shadow-sm">
-                                <strong>AI:</strong> {selectedVideo 
-                                  ? selectedVideo.hasAIAnalysis 
-                                    ? `Video "${selectedVideo.title || 'tanpa judul'}" sudah dianalisis! Saya menemukan ${selectedVideo.aiSuggestions?.improvements?.length || 0} saran perbaikan. Tanya saya tentang konten video, transkrip, atau saran perbaikan yang spesifik.`
-                                    : selectedVideo.transcript_status === 'completed'
-                                    ? `Video "${selectedVideo.title || 'tanpa judul'}" sudah memiliki transkrip. Klik "Start Analysis" untuk mendapatkan analisis AI dan saran perbaikan.`
-                                    : `Video "${selectedVideo.title || 'tanpa judul'}" sudah dipilih. Klik tombol "Start Analysis" untuk memulai ekstraksi transkrip video menggunakan AI. Setelah selesai, Anda bisa chat dengan saya tentang konten video tersebut.`
-                                  : "Pilih video terlebih dahulu dari daftar di atas. Tombol 'Start Analysis' sudah tersedia di atas, tapi akan aktif setelah Anda memilih video."
-                                }
+                                <strong>AI:</strong>{" "}
+                                {selectedVideo
+                                  ? selectedVideo.hasAIAnalysis
+                                    ? `Video "${
+                                        selectedVideo.title || "tanpa judul"
+                                      }" sudah dianalisis! Saya menemukan ${
+                                        selectedVideo.aiSuggestions
+                                          ?.improvements?.length || 0
+                                      } saran perbaikan. Tanya saya tentang konten video, transkrip, atau saran perbaikan yang spesifik.`
+                                    : selectedVideo.transcript_status ===
+                                      "completed"
+                                    ? `Video "${
+                                        selectedVideo.title || "tanpa judul"
+                                      }" sudah memiliki transkrip. Klik "Start Analysis" untuk mendapatkan analisis AI dan saran perbaikan.`
+                                    : `Video "${
+                                        selectedVideo.title || "tanpa judul"
+                                      }" sudah dipilih. Klik tombol "Start Analysis" untuk memulai ekstraksi transkrip video menggunakan AI. Setelah selesai, Anda bisa chat dengan saya tentang konten video tersebut.`
+                                  : "Pilih video terlebih dahulu dari daftar di atas. Tombol 'Start Analysis' sudah tersedia di atas, tapi akan aktif setelah Anda memilih video."}
                               </div>
-                              
+
                               {/* Show AI Analysis Summary in Chat */}
-                              {selectedVideo && selectedVideo.hasAIAnalysis && selectedVideo.aiAnalysis && (
-                                <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                                  <strong className="text-blue-800">Ringkasan Analisis:</strong>
-                                  <p className="text-blue-700 text-xs mt-1">{selectedVideo.aiAnalysis}</p>
-                                </div>
-                              )}
-                              
+                              {selectedVideo &&
+                                selectedVideo.hasAIAnalysis &&
+                                selectedVideo.aiAnalysis && (
+                                  <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                                    <strong className="text-blue-800">
+                                      Ringkasan Analisis:
+                                    </strong>
+                                    <p className="text-blue-700 text-xs mt-1">
+                                      {selectedVideo.aiAnalysis}
+                                    </p>
+                                  </div>
+                                )}
+
                               {/* Show Transcript Preview in Chat */}
                               {selectedVideo && selectedVideo.transcript && (
                                 <div className="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-400">
-                                  <strong className="text-green-800">Transkrip:</strong>
+                                  <strong className="text-green-800">
+                                    Transkrip:
+                                  </strong>
                                   <p className="text-green-700 text-xs mt-1">
-                                    {selectedVideo.transcript.length > 150 
-                                      ? selectedVideo.transcript.substring(0, 150) + '...' 
+                                    {selectedVideo.transcript.length > 150
+                                      ? selectedVideo.transcript.substring(
+                                          0,
+                                          150
+                                        ) + "..."
                                       : selectedVideo.transcript}
                                   </p>
                                 </div>
@@ -1858,45 +2442,116 @@ export default function CanvasPage() {
 
                           {/* Chat Messages */}
                           {videoChatMessages.map((message) => (
-                            <div key={message.id} className={`mb-3 p-3 rounded-lg ${
-                              message.sender === 'user' 
-                                ? 'bg-blue-100 border-l-4 border-blue-400 ml-8' 
-                                : 'bg-white shadow-sm mr-8'
-                            }`}>
+                            <div
+                              key={message.id}
+                              className={`mb-3 p-3 rounded-lg ${
+                                message.sender === "user"
+                                  ? "bg-blue-100 border-l-4 border-blue-400 ml-8"
+                                  : "bg-white shadow-sm mr-8"
+                              }`}
+                            >
                               <div className="flex items-center gap-2 mb-1">
-                                <strong className={message.sender === 'user' ? 'text-blue-800' : 'text-slate-800'}>
-                                  {message.sender === 'user' ? 'Anda' : 'AI'}:
+                                <strong
+                                  className={
+                                    message.sender === "user"
+                                      ? "text-blue-800"
+                                      : "text-slate-800"
+                                  }
+                                >
+                                  {message.sender === "user" ? "Anda" : "AI"}:
                                 </strong>
                                 <span className="text-xs text-slate-500">
                                   {message.timestamp.toLocaleTimeString()}
                                 </span>
                               </div>
-                              <div className={`text-sm ${
-                                message.sender === 'user' ? 'text-blue-700' : 'text-slate-700'
-                              }`}>
-                                {message.sender === 'user' ? (
-                                  <p>{message.text}</p>
+                              <div
+                                className={`text-sm ${
+                                  message.sender === "user"
+                                    ? "text-blue-700"
+                                    : "text-slate-700"
+                                }`}
+                              >
+                                {message.sender === "user" ? (
+                                  <p>{message.message || message.text}</p>
                                 ) : (
                                   <div className="prose prose-sm max-w-none">
-                                    <ReactMarkdown 
+                                    <ReactMarkdown
                                       components={{
-                                        h1: ({node, ...props}) => <h1 className="text-lg font-bold text-slate-800 mb-2" {...props} />,
-                                        h2: ({node, ...props}) => <h2 className="text-base font-bold text-slate-800 mb-2" {...props} />,
-                                        h3: ({node, ...props}) => <h3 className="text-sm font-bold text-slate-800 mb-1" {...props} />,
-                                        strong: ({node, ...props}) => <strong className="font-bold text-slate-800" {...props} />,
-                                        em: ({node, ...props}) => <em className="italic text-slate-700" {...props} />,
-                                        p: ({node, ...props}) => <p className="mb-2 text-slate-700 leading-relaxed" {...props} />,
-                                        ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
-                                        ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
-                                        li: ({node, ...props}) => <li className="text-slate-700" {...props} />,
-                                        blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-400 pl-3 italic text-slate-600" {...props} />,
-                                        code: ({node, inline, ...props}) => 
-                                          inline 
-                                            ? <code className="bg-slate-100 px-1 py-0.5 rounded text-xs font-mono" {...props} />
-                                            : <code className="block bg-slate-100 p-2 rounded text-xs font-mono overflow-x-auto" {...props} />
+                                        h1: ({ node, ...props }) => (
+                                          <h1
+                                            className="text-lg font-bold text-slate-800 mb-2"
+                                            {...props}
+                                          />
+                                        ),
+                                        h2: ({ node, ...props }) => (
+                                          <h2
+                                            className="text-base font-bold text-slate-800 mb-2"
+                                            {...props}
+                                          />
+                                        ),
+                                        h3: ({ node, ...props }) => (
+                                          <h3
+                                            className="text-sm font-bold text-slate-800 mb-1"
+                                            {...props}
+                                          />
+                                        ),
+                                        strong: ({ node, ...props }) => (
+                                          <strong
+                                            className="font-bold text-slate-800"
+                                            {...props}
+                                          />
+                                        ),
+                                        em: ({ node, ...props }) => (
+                                          <em
+                                            className="italic text-slate-700"
+                                            {...props}
+                                          />
+                                        ),
+                                        p: ({ node, ...props }) => (
+                                          <p
+                                            className="mb-2 text-slate-700 leading-relaxed"
+                                            {...props}
+                                          />
+                                        ),
+                                        ul: ({ node, ...props }) => (
+                                          <ul
+                                            className="list-disc list-inside mb-2 space-y-1"
+                                            {...props}
+                                          />
+                                        ),
+                                        ol: ({ node, ...props }) => (
+                                          <ol
+                                            className="list-decimal list-inside mb-2 space-y-1"
+                                            {...props}
+                                          />
+                                        ),
+                                        li: ({ node, ...props }) => (
+                                          <li
+                                            className="text-slate-700"
+                                            {...props}
+                                          />
+                                        ),
+                                        blockquote: ({ node, ...props }) => (
+                                          <blockquote
+                                            className="border-l-4 border-blue-400 pl-3 italic text-slate-600"
+                                            {...props}
+                                          />
+                                        ),
+                                        code: ({ node, inline, ...props }) =>
+                                          inline ? (
+                                            <code
+                                              className="bg-slate-100 px-1 py-0.5 rounded text-xs font-mono"
+                                              {...props}
+                                            />
+                                          ) : (
+                                            <code
+                                              className="block bg-slate-100 p-2 rounded text-xs font-mono overflow-x-auto"
+                                              {...props}
+                                            />
+                                          ),
                                       }}
                                     >
-                                      {message.text}
+                                      {message.message || message.text}
                                     </ReactMarkdown>
                                   </div>
                                 )}
@@ -1911,8 +2566,14 @@ export default function CanvasPage() {
                                 <strong className="text-slate-800">AI:</strong>
                                 <div className="flex gap-1">
                                   <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                  <div
+                                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                                    style={{ animationDelay: "0.1s" }}
+                                  ></div>
+                                  <div
+                                    className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"
+                                    style={{ animationDelay: "0.2s" }}
+                                  ></div>
                                 </div>
                               </div>
                             </div>
@@ -1926,23 +2587,31 @@ export default function CanvasPage() {
                           onChange={(e) => setVideoChatInput(e.target.value)}
                           onKeyPress={handleVideoChatKeyPress}
                           placeholder={
-                            selectedVideo && selectedVideo.hasAIAnalysis 
-                              ? "Tanya saya tentang video, transkrip, atau saran perbaikan..." 
-                              : selectedVideo 
-                                ? "Klik 'Start Analysis' untuk memulai analisis video terlebih dahulu..." 
-                                : "Pilih video terlebih dahulu..."
+                            selectedVideo && selectedVideo.hasAIAnalysis
+                              ? "Tanya saya tentang video, transkrip, atau saran perbaikan..."
+                              : selectedVideo
+                              ? "Klik 'Start Analysis' untuk memulai analisis video terlebih dahulu..."
+                              : "Pilih video terlebih dahulu..."
                           }
-                          disabled={!selectedVideo || !selectedVideo.hasAIAnalysis || isVideoChatLoading}
+                          disabled={
+                            !selectedVideo ||
+                            !selectedVideo.hasAIAnalysis ||
+                            isVideoChatLoading
+                          }
                           className={`flex-1 h-10 rounded-xl border px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 ${
-                            selectedVideo && selectedVideo.hasAIAnalysis 
-                              ? 'bg-white text-slate-900' 
-                              : 'bg-slate-100 text-slate-400'
+                            selectedVideo && selectedVideo.hasAIAnalysis
+                              ? "bg-white text-slate-900"
+                              : "bg-slate-100 text-slate-400"
                           }`}
                         />
-                        <Button 
-                          size="sm" 
-                          className="h-10 w-10 p-0 bg-[#583377] hover:bg-[#4a2b65] text-white" 
-                          disabled={!selectedVideo || !selectedVideo.hasAIAnalysis || isVideoChatLoading}
+                        <Button
+                          size="sm"
+                          className="h-10 w-10 p-0 bg-[#583377] hover:bg-[#4a2b65] text-white"
+                          disabled={
+                            !selectedVideo ||
+                            !selectedVideo.hasAIAnalysis ||
+                            isVideoChatLoading
+                          }
                           onClick={sendVideoChatMessage}
                         >
                           {isVideoChatLoading ? (
@@ -1971,53 +2640,90 @@ export default function CanvasPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="min-h-[300px] w-full rounded-xl border p-6 bg-slate-50/50">
-                      {selectedVideo && selectedVideo.hasAIAnalysis && selectedVideo.aiSuggestions ? (
+                      {selectedVideo &&
+                      selectedVideo.hasAIAnalysis &&
+                      selectedVideo.aiSuggestions ? (
                         // Display AI Analysis Results
                         <div className="space-y-4">
                           <div className="flex items-center gap-2 mb-4">
                             <Sparkles className="h-5 w-5 text-purple-600" />
-                            <h3 className="font-medium text-slate-700">Analisis Konten Video</h3>
+                            <h3 className="font-medium text-slate-700">
+                              Analisis Konten Video
+                            </h3>
                           </div>
-                          
+
                           {/* AI Analysis */}
                           {selectedVideo.aiAnalysis && (
                             <div className="bg-white rounded-lg p-4 border">
-                              <h4 className="font-medium text-slate-700 mb-2">Analisis Konten:</h4>
-                              <p className="text-sm text-slate-600">{selectedVideo.aiAnalysis}</p>
+                              <h4 className="font-medium text-slate-700 mb-2">
+                                Analisis Konten:
+                              </h4>
+                              <p className="text-sm text-slate-600">
+                                {selectedVideo.aiAnalysis}
+                              </p>
                             </div>
                           )}
-                          
+
                           {/* Improvement Suggestions */}
                           {selectedVideo.aiSuggestions?.improvements && (
                             <div className="bg-white rounded-lg p-4 border">
-                              <h4 className="font-medium text-slate-700 mb-2">Saran Perbaikan:</h4>
+                              <h4 className="font-medium text-slate-700 mb-2">
+                                Saran Perbaikan:
+                              </h4>
                               <ul className="text-sm text-slate-600 space-y-1">
-                                {selectedVideo.aiSuggestions.improvements.map((suggestion, index) => (
-                                  <li key={index} className="flex items-start gap-2">
-                                    <span className="text-purple-600 mt-1">•</span>
-                                    <span>{suggestion}</span>
-                                  </li>
-                                ))}
+                                {selectedVideo.aiSuggestions.improvements.map(
+                                  (suggestion, index) => (
+                                    <li
+                                      key={index}
+                                      className="flex items-start gap-2"
+                                    >
+                                      <span className="text-purple-600 mt-1">
+                                        •
+                                      </span>
+                                      <span>{suggestion}</span>
+                                    </li>
+                                  )
+                                )}
                               </ul>
                             </div>
                           )}
-                          
+
                           {/* Caption Fix */}
                           {selectedVideo.aiSuggestions?.captionFix && (
                             <div className="bg-white rounded-lg p-4 border">
-                              <h4 className="font-medium text-slate-700 mb-2">Saran Caption:</h4>
+                              <h4 className="font-medium text-slate-700 mb-2">
+                                Saran Caption:
+                              </h4>
                               <div className="space-y-2 text-sm">
                                 <div>
-                                  <span className="text-red-600 font-medium">Caption Saat ini:</span>
-                                  <p className="text-slate-600 italic">"{selectedVideo.caption || 'Tidak ada caption'}"</p>
+                                  <span className="text-red-600 font-medium">
+                                    Caption Saat ini:
+                                  </span>
+                                  <p className="text-slate-600 italic">
+                                    "
+                                    {selectedVideo.caption ||
+                                      "Tidak ada caption"}
+                                    "
+                                  </p>
                                 </div>
                                 <div>
-                                  <span className="text-green-600 font-medium">Caption Disarankan:</span>
-                                  <p className="text-slate-600">"{selectedVideo.aiSuggestions.captionFix.suggested}"</p>
+                                  <span className="text-green-600 font-medium">
+                                    Caption Disarankan:
+                                  </span>
+                                  <p className="text-slate-600">
+                                    "
+                                    {
+                                      selectedVideo.aiSuggestions.captionFix
+                                        .suggested
+                                    }
+                                    "
+                                  </p>
                                 </div>
                                 {selectedVideo.transcript && (
                                   <div className="mt-3 p-3 bg-blue-50 rounded border-l-4 border-blue-400">
-                                    <span className="text-blue-600 font-medium text-xs">Transkrip Video:</span>
+                                    <span className="text-blue-600 font-medium text-xs">
+                                      Transkrip Video:
+                                    </span>
                                     <p className="text-blue-700 text-xs mt-1 max-h-20 overflow-y-auto leading-relaxed">
                                       "{selectedVideo.transcript}"
                                     </p>
@@ -2026,22 +2732,30 @@ export default function CanvasPage() {
                               </div>
                             </div>
                           )}
-                          
+
                           {/* Hashtag Suggestions */}
                           {selectedVideo.aiSuggestions?.tagsFix?.suggested && (
                             <div className="bg-white rounded-lg p-4 border">
-                              <h4 className="font-medium text-slate-700 mb-2">Saran Hashtag:</h4>
+                              <h4 className="font-medium text-slate-700 mb-2">
+                                Saran Hashtag:
+                              </h4>
                               <div className="flex flex-wrap gap-2">
-                                {selectedVideo.aiSuggestions.tagsFix.suggested.map((tag, index) => (
-                                  <span key={index} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-                                    #{tag}
-                                  </span>
-                                ))}
+                                {selectedVideo.aiSuggestions.tagsFix.suggested.map(
+                                  (tag, index) => (
+                                    <span
+                                      key={index}
+                                      className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full"
+                                    >
+                                      #{tag}
+                                    </span>
+                                  )
+                                )}
                               </div>
                             </div>
                           )}
                         </div>
-                      ) : selectedVideo && selectedVideo.transcript_status === 'completed' ? (
+                      ) : selectedVideo &&
+                        selectedVideo.transcript_status === "completed" ? (
                         // Video has transcript but no AI analysis yet
                         <div className="flex items-center justify-center h-full min-h-[200px]">
                           <div className="text-center space-y-4">
@@ -2049,16 +2763,20 @@ export default function CanvasPage() {
                               <Sparkles className="h-10 w-10 text-orange-500" />
                             </div>
                             <div className="space-y-2">
-                              <h3 className="font-semibold text-slate-700 text-lg">Transkrip Tersedia</h3>
+                              <h3 className="font-semibold text-slate-700 text-lg">
+                                Transkrip Tersedia
+                              </h3>
                               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-                                Video sudah memiliki transkrip dan siap untuk dianalisis oleh AI.
+                                Video sudah memiliki transkrip dan siap untuk
+                                dianalisis oleh AI.
                               </p>
                               <div className="mt-4 px-4 py-3 bg-orange-50 rounded-lg border border-orange-200">
                                 <p className="text-sm text-orange-700 font-medium mb-1">
                                   📝 Transkrip siap!
                                 </p>
                                 <p className="text-xs text-orange-600">
-                                  Klik "Start Analysis" untuk mendapatkan analisis dan saran perbaikan dari AI
+                                  Klik "Start Analysis" untuk mendapatkan
+                                  analisis dan saran perbaikan dari AI
                                 </p>
                               </div>
                             </div>
@@ -2072,16 +2790,20 @@ export default function CanvasPage() {
                               <Sparkles className="h-10 w-10 text-blue-500" />
                             </div>
                             <div className="space-y-2">
-                              <h3 className="font-semibold text-slate-700 text-lg">Siap untuk Analisis</h3>
+                              <h3 className="font-semibold text-slate-700 text-lg">
+                                Siap untuk Analisis
+                              </h3>
                               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-                                Video "{selectedVideo.title || 'Tanpa judul'}" sudah dipilih.
+                                Video "{selectedVideo.title || "Tanpa judul"}"
+                                sudah dipilih.
                               </p>
                               <div className="mt-4 px-4 py-3 bg-green-50 rounded-lg border border-green-200">
                                 <p className="text-sm text-green-700 font-medium mb-1">
                                   🚀 Siap untuk memulai!
                                 </p>
                                 <p className="text-xs text-green-600">
-                                  Klik tombol "Start Analysis" di atas untuk menganalisis video dan mendapatkan saran AI
+                                  Klik tombol "Start Analysis" di atas untuk
+                                  menganalisis video dan mendapatkan saran AI
                                 </p>
                               </div>
                             </div>
@@ -2095,13 +2817,17 @@ export default function CanvasPage() {
                               <Sparkles className="h-10 w-10 text-purple-500" />
                             </div>
                             <div className="space-y-2">
-                              <h3 className="font-semibold text-slate-700 text-lg">Analisis Video dengan AI</h3>
+                              <h3 className="font-semibold text-slate-700 text-lg">
+                                Analisis Video dengan AI
+                              </h3>
                               <p className="text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
-                                Pilih video dari daftar di sebelah kiri untuk melihat analisis dan saran perbaikan dari AI.
+                                Pilih video dari daftar di sebelah kiri untuk
+                                melihat analisis dan saran perbaikan dari AI.
                               </p>
                               <div className="mt-4 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200">
                                 <p className="text-xs text-blue-600 font-medium">
-                                  💡 Tip: Klik tombol "Start Analysis" setelah memilih video
+                                  💡 Tip: Klik tombol "Start Analysis" setelah
+                                  memilih video
                                 </p>
                               </div>
                             </div>
@@ -2113,11 +2839,21 @@ export default function CanvasPage() {
                   <CardFooter className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-xs text-slate-600">
                       {selectedVideo && selectedVideo.hasAIAnalysis ? (
-                        <span>Analisis selesai • {selectedVideo.aiSuggestions?.improvements?.length || 0} saran tersedia</span>
+                        <span>
+                          Analisis selesai •{" "}
+                          {selectedVideo.aiSuggestions?.improvements?.length ||
+                            0}{" "}
+                          saran tersedia
+                        </span>
                       ) : selectedVideo ? (
-                        <span>Pilih video dan klik "Start Analysis" untuk mendapatkan saran AI</span>
+                        <span>
+                          Pilih video dan klik "Start Analysis" untuk
+                          mendapatkan saran AI
+                        </span>
                       ) : (
-                        <span>Pilih video untuk melihat analisis dan saran perbaikan</span>
+                        <span>
+                          Pilih video untuk melihat analisis dan saran perbaikan
+                        </span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -2138,19 +2874,21 @@ export default function CanvasPage() {
 
       {/* Image Modal */}
       {showImageModal && selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4"
           style={{ zIndex: 9999 }}
           onClick={closeImageModal}
         >
-          <div 
+          <div
             className="relative bg-white rounded-lg shadow-2xl max-w-4xl max-h-[90vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b bg-gray-50">
               <div>
-                <h3 className="text-lg font-semibold">Scene {selectedImage.sceneNumber}</h3>
+                <h3 className="text-lg font-semibold">
+                  Scene {selectedImage.sceneNumber}
+                </h3>
                 <p className="text-sm text-gray-600 mt-1">
                   {selectedImage.scene?.timestamp}
                 </p>
@@ -2168,8 +2906,8 @@ export default function CanvasPage() {
               <div className="flex flex-col lg:flex-row gap-4">
                 {/* Image */}
                 <div className="flex-shrink-0">
-                  <img 
-                    src={selectedImage.url} 
+                  <img
+                    src={selectedImage.url}
                     alt={`Scene ${selectedImage.sceneNumber} illustration`}
                     className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-sm"
                   />
@@ -2178,14 +2916,18 @@ export default function CanvasPage() {
                 {/* Scene Details */}
                 <div className="flex-1 min-w-0 space-y-4">
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Scene Description</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">
+                      Scene Description
+                    </h4>
                     <p className="text-sm text-gray-700 leading-relaxed">
                       {selectedImage.scene?.description}
                     </p>
                   </div>
 
                   <div>
-                    <h4 className="font-medium text-gray-900 mb-2">Visual Direction</h4>
+                    <h4 className="font-medium text-gray-900 mb-2">
+                      Visual Direction
+                    </h4>
                     <p className="text-sm text-gray-600 leading-relaxed">
                       {selectedImage.scene?.illustration}
                     </p>
@@ -2193,7 +2935,9 @@ export default function CanvasPage() {
 
                   {selectedImage.scene?.seedreamsPrompt && (
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-2">AI Prompt Used</h4>
+                      <h4 className="font-medium text-gray-900 mb-2">
+                        AI Prompt Used
+                      </h4>
                       <p className="text-xs text-gray-500 bg-gray-100 p-3 rounded-lg leading-relaxed">
                         {selectedImage.scene.seedreamsPrompt}
                       </p>
@@ -2202,13 +2946,29 @@ export default function CanvasPage() {
 
                   {selectedImage.scene?.imageMetadata && (
                     <div className="border-t pt-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Generation Info</h4>
+                      <h4 className="font-medium text-gray-900 mb-2">
+                        Generation Info
+                      </h4>
                       <div className="text-xs text-gray-500 space-y-1">
-                        <div>Model: {selectedImage.scene.imageMetadata.model}</div>
+                        <div>
+                          Model: {selectedImage.scene.imageMetadata.model}
+                        </div>
                         <div>Size: {selectedImage.scene.imageSize}</div>
-                        <div>Generated: {new Date(selectedImage.scene.imageMetadata.generatedAt).toLocaleString()}</div>
+                        <div>
+                          Generated:{" "}
+                          {new Date(
+                            selectedImage.scene.imageMetadata.generatedAt
+                          ).toLocaleString()}
+                        </div>
                         {selectedImage.scene.imageMetadata.usage && (
-                          <div>Tokens: {selectedImage.scene.imageMetadata.usage.total_tokens || selectedImage.scene.imageMetadata.usage.generated_images} generated</div>
+                          <div>
+                            Tokens:{" "}
+                            {selectedImage.scene.imageMetadata.usage
+                              .total_tokens ||
+                              selectedImage.scene.imageMetadata.usage
+                                .generated_images}{" "}
+                            generated
+                          </div>
                         )}
                       </div>
                     </div>
@@ -2225,11 +2985,11 @@ export default function CanvasPage() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
                   onClick={() => {
-                    const link = document.createElement('a');
+                    const link = document.createElement("a");
                     link.href = selectedImage.url;
                     link.download = `scene-${selectedImage.sceneNumber}-illustration.jpg`;
                     document.body.appendChild(link);
@@ -2251,41 +3011,213 @@ export default function CanvasPage() {
       {/* Video Analysis is now integrated directly in the discuss mode */}
 
       {/* Analysis Progress Modal */}
-      <AnalysisProgressModal
+      <SimpleProgressModal
         isOpen={showAnalysisProgress}
+        processId={analysisVideo?._id}
+        processType="video-analysis"
+        title="Analisis Video"
         onClose={() => {
           setShowAnalysisProgress(false);
           setAnalysisVideo(null);
         }}
         video={analysisVideo}
-        onComplete={(updatedVideo) => {
-          console.log('Analysis completed:', updatedVideo);
+        onComplete={(completionData) => {
+          console.log("🎯 Analysis completed, updating UI...");
+          console.log("Analysis data:", completionData);
+
           setShowAnalysisProgress(false);
           setAnalysisVideo(null);
-          toast.success('Analisis video selesai! Sekarang Anda bisa chat dengan AI tentang video ini.');
-          
-          // Update selectedVideo dengan data terbaru
-          setSelectedVideo(updatedVideo);
-          
-          // Update videos list dengan data terbaru
-          setVideos(prevVideos => 
-            prevVideos.map(video => 
-              video._id === updatedVideo._id ? updatedVideo : video
-            )
+          toast.success(
+            "Analisis video selesai! Sekarang Anda bisa chat dengan AI tentang video ini."
           );
-          
-          // Refresh video list untuk memastikan data sinkron dengan database
-          setTimeout(() => {
-            fetchVideos();
-          }, 500);
+
+          // Refresh the video data from server to get latest state
+          if (analysisVideo?._id) {
+            fetchVideoById(analysisVideo._id)
+              .then((updatedVideo) => {
+                console.log("🔄 Fetched updated video:", updatedVideo);
+
+                if (updatedVideo) {
+                  // Ensure the video has the correct flags for UI rendering
+                  const processedVideo = {
+                    ...updatedVideo,
+                    hasAIAnalysis: !!(
+                      updatedVideo.transcript &&
+                      (updatedVideo.analysis || updatedVideo.aiAnalysis)
+                    ),
+                    hasTranscript: !!updatedVideo.transcript,
+                  };
+
+                  console.log("🔄 Processed video data:", processedVideo);
+
+                  // Batch all state updates together with React 18 automatic batching
+                  React.startTransition(() => {
+                    // Update selectedVideo dengan data terbaru
+                    setSelectedVideo(processedVideo);
+                    console.log("🔄 Updated selectedVideo state");
+
+                    // Update videos list dengan data terbaru
+                    setVideos((prevVideos) =>
+                      prevVideos.map((video) =>
+                        video._id === processedVideo._id
+                          ? processedVideo
+                          : video
+                      )
+                    );
+                    console.log("🔄 Updated videos list");
+
+                    // Switch to discuss mode to show the analysis
+                    setCanvasMode("discuss");
+                    console.log("🔄 Switched to discuss mode");
+
+                    // Initialize video chat with actual analysis results
+                    const analysisResults =
+                      completionData.analysis || processedVideo.aiAnalysis;
+                    const transcript =
+                      completionData.transcript || processedVideo.transcript;
+
+                    let analysisMessage = `📹 **Analisis Video "${
+                      processedVideo.title || "Video Anda"
+                    }" Selesai!**\n\n`;
+
+                    // Add analysis summary if available
+                    if (analysisResults) {
+                      if (typeof analysisResults === "object") {
+                        if (analysisResults.analysis) {
+                          analysisMessage += `**📊 Ringkasan Analisis:**\n${analysisResults.analysis}\n\n`;
+                        }
+
+                        if (
+                          analysisResults.improvements &&
+                          analysisResults.improvements.length > 0
+                        ) {
+                          analysisMessage += `**💡 Saran Perbaikan:**\n`;
+                          analysisResults.improvements
+                            .slice(0, 3)
+                            .forEach((improvement, index) => {
+                              analysisMessage += `${
+                                index + 1
+                              }. ${improvement}\n`;
+                            });
+                          if (analysisResults.improvements.length > 3) {
+                            analysisMessage += `\n...dan ${
+                              analysisResults.improvements.length - 3
+                            } saran lainnya.\n`;
+                          }
+                          analysisMessage += `\n`;
+                        }
+
+                        if (
+                          analysisResults.hooks &&
+                          analysisResults.hooks.length > 0
+                        ) {
+                          analysisMessage += `**🎯 Saran Hook yang Menarik:**\n"${analysisResults.hooks[0]}"\n\n`;
+                        }
+                      } else if (typeof analysisResults === "string") {
+                        analysisMessage += `**📊 Analisis:**\n${analysisResults.substring(
+                          0,
+                          300
+                        )}${analysisResults.length > 300 ? "..." : ""}\n\n`;
+                      }
+                    }
+
+                    // Add transcript preview
+                    if (transcript) {
+                      analysisMessage += `**📝 Transkrip Preview:**\n"${transcript.substring(
+                        0,
+                        200
+                      )}${transcript.length > 200 ? "..." : ""}"\n\n`;
+                    }
+
+                    analysisMessage += `Tanya saya tentang aspek spesifik dari video ini, atau minta saran untuk perbaikan lebih lanjut! 🚀`;
+
+                    const initialMessage = {
+                      id: Date.now(),
+                      sender: "ai",
+                      message: analysisMessage,
+                      timestamp: new Date(),
+                    };
+
+                    setVideoChatMessages([initialMessage]);
+                    console.log(
+                      "🔄 Initialized video chat with analysis results:",
+                      {
+                        hasAnalysis: !!analysisResults,
+                        hasTranscript: !!transcript,
+                        messageLength: analysisMessage.length,
+                      }
+                    );
+                  });
+
+                  console.log("🎯 UI should now show analysis content");
+                  console.log("🎯 Canvas mode switched to:", "discuss");
+                  console.log(
+                    "🎯 Selected video hasAIAnalysis:",
+                    processedVideo.hasAIAnalysis
+                  );
+
+                  // Force UI update
+                  setTimeout(() => {
+                    setForceUpdate((prev) => prev + 1);
+                    console.log("🔄 Forced UI update");
+                  }, 200);
+
+                  // Refresh video list untuk memastikan data sinkron dengan database
+                  setTimeout(() => {
+                    fetchVideos();
+                  }, 500);
+                }
+              })
+              .catch((error) => {
+                console.error("Error fetching updated video:", error);
+                // Fallback: just refresh the videos list
+                fetchVideos();
+              });
+          }
         }}
         onError={(error) => {
-          console.error('Analysis error:', error);
+          console.error("Analysis error:", error);
           setShowAnalysisProgress(false);
           setAnalysisVideo(null);
-          toast.error('Analisis video gagal: ' + error);
+          toast.error("Analisis video gagal: " + error);
         }}
       />
+
+      {/* Content Generation Progress Modal */}
+      {showContentGenerationProgress && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <h3 className="text-lg font-semibold mb-2">
+                Membuat Konten Video
+              </h3>
+              <p className="text-gray-600 mb-4">
+                AI sedang membuat script, hooks, tags, caption, dan storyboard
+                untuk Anda...
+              </p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <div className="flex items-center justify-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></div>
+                  Menganalisis permintaan Anda
+                </div>
+                <div className="flex items-center justify-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></div>
+                  Membuat script dan hooks
+                </div>
+                <div className="flex items-center justify-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></div>
+                  Menyusun storyboard
+                </div>
+                <div className="flex items-center justify-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse mr-2"></div>
+                  Finalizing content
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
