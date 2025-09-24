@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import HoverButton from "@/components/HoverButton";
+import FullPageLoader from "@/components/FullPageLoader";
 
 // Base URL for API calls. Override via VITE_API_BASE_URL if needed.
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
@@ -363,14 +364,7 @@ export default function AccountSettingsPage() {
   );
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 flex items-center justify-center">
-        <div className="flex items-center gap-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading profile...</span>
-        </div>
-      </div>
-    );
+    return <FullPageLoader text="Loading profile..." />;
   }
 
   return (

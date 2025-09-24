@@ -11,23 +11,49 @@ const LogoutPage = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    const TOAST_KEY = "lastLogoutToastAt";
+    const TOAST_TTL = 3000; // milliseconds
+
+    const shouldShowToast = () => {
+      try {
+        const last = parseInt(sessionStorage.getItem(TOAST_KEY) || "0", 10);
+        return Number.isNaN(last) ? true : Date.now() - last > TOAST_TTL;
+      } catch (e) {
+        return true;
+      }
+    };
+
+    const markToastShown = () => {
+      try {
+        sessionStorage.setItem(TOAST_KEY, Date.now().toString());
+      } catch (e) {
+        // ignore
+      }
+    };
+
     const handleLogout = async () => {
       try {
         setLoading(true);
         await logout();
-        toast({
-          title: "Logged out",
-          description: "You have been logged out successfully.",
-          variant: "success",
-        });
+        if (shouldShowToast()) {
+          toast({
+            title: "Logged out",
+            description: "You have been logged out successfully.",
+            variant: "success",
+          });
+          markToastShown();
+        }
         navigate("/login", { replace: true });
       } catch (error) {
         console.error("Logout error:", error);
-        toast({
-          title: "Logout Failed",
-          description: error?.message || "Logout failed. Please try again.",
-          variant: "warning",
-        });
+        if (shouldShowToast()) {
+          toast({
+            title: "Logout Failed",
+            description: error?.message || "Logout failed. Please try again.",
+            variant: "warning",
+          });
+          markToastShown();
+        }
         // Still redirect to login even if logout fails
         navigate("/login", { replace: true });
       }

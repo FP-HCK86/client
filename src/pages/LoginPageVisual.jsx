@@ -18,9 +18,9 @@ import { AlertCircle, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth.jsx";
 import { useToast } from "@/hooks/use-toast";
-import LoadingSpinner from '@/components/LoadingSpinner';
+import LoadingSpinner from "@/components/LoadingSpinner";
 import { PointerHighlight } from "@/components/ui/pointer-highlight";
-import FullPageLoader from '@/components/FullPageLoader';
+import FullPageLoader from "@/components/FullPageLoader";
 
 const LoginPage = memo(() => {
   const { login, googleLogin, isAuthenticated } = useAuth();
@@ -91,19 +91,27 @@ const LoginPage = memo(() => {
       try {
         const result = await login(formData.email, formData.password);
         if (result.success) {
-          toast({ title: 'Success!', description: 'Signed in successfully', variant: 'success' });
+          toast({
+            title: "Success!",
+            description: "Signed in successfully",
+            variant: "success",
+          });
           navigate("/dashboard", { replace: true });
         } else {
           const msg =
             result.error || "Login failed. Please check your credentials.";
           setErrors({ general: msg });
-          toast({ title: 'Login Failed', description: msg, variant: 'warning' });
+          toast({
+            title: "Login Failed",
+            description: msg,
+            variant: "warning",
+          });
         }
       } catch (error) {
         console.error("Login error:", error);
         const msg = "An error occurred during login. Please try again.";
         setErrors({ general: msg });
-        toast({ title: 'Login Error', description: msg, variant: 'warning' });
+        toast({ title: "Login Error", description: msg, variant: "warning" });
       } finally {
         setLoading(false);
       }
@@ -119,18 +127,30 @@ const LoginPage = memo(() => {
       try {
         const result = await googleLogin(response.credential);
         if (result.success) {
-          toast({ title: 'Success', description: 'Login successful', variant: 'success' });
+          toast({
+            title: "Success",
+            description: "Login successful",
+            variant: "success",
+          });
           navigate("/dashboard", { replace: true });
         } else {
           const msg = result.error || "Google authentication failed";
           setErrors({ general: msg });
-          toast({ title: 'Authentication Failed', description: msg, variant: 'warning' });
+          toast({
+            title: "Authentication Failed",
+            description: msg,
+            variant: "warning",
+          });
         }
       } catch (e) {
         console.error("Google Sign-In error", e);
         const msg = "Google authentication failed. Please try again.";
         setErrors({ general: msg });
-        toast({ title: 'Authentication Error', description: msg, variant: 'warning' });
+        toast({
+          title: "Authentication Error",
+          description: msg,
+          variant: "warning",
+        });
       } finally {
         setGoogleLoading(false);
       }
@@ -181,7 +201,11 @@ const LoginPage = memo(() => {
       script.defer = true;
       script.onload = initialize;
       script.onerror = () =>
-        toast({ title: 'Script Error', description: 'Failed to load Google Sign-In script', variant: 'warning' });
+        toast({
+          title: "Script Error",
+          description: "Failed to load Google Sign-In script",
+          variant: "warning",
+        });
       document.head.appendChild(script);
     } else {
       const t = setTimeout(initialize, 500);
@@ -197,7 +221,9 @@ const LoginPage = memo(() => {
 
   return (
     <div className="h-screen bg-white">
-      {(loading || googleLoading) && <FullPageLoader text={loading ? 'Signing in…' : 'Processing…'} />}
+      {(loading || googleLoading) && (
+        <FullPageLoader text={loading ? "Signing in…" : "Processing…"} />
+      )}
       {/* Top bar (Back / Sign up) */}
       <div className="mx-auto px-8 pt-6 flex items-center justify-between" />
 
@@ -260,7 +286,11 @@ const LoginPage = memo(() => {
                   </div>
                   {googleLoading && (
                     <div className="mt-2 text-center text-sm text-slate-500 flex items-center justify-center gap-2">
-                      <LoadingSpinner sizeVariant="sm" speed="0.9s" thickness={3} />
+                      <LoadingSpinner
+                        sizeVariant="sm"
+                        speed="0.9s"
+                        thickness={3}
+                      />
                       <span>Processing Google login...</span>
                     </div>
                   )}
@@ -350,7 +380,11 @@ const LoginPage = memo(() => {
                   >
                     {loading ? (
                       <>
-                        <LoadingSpinner sizeVariant="sm" speed="0.9s" thickness={3} />
+                        <LoadingSpinner
+                          sizeVariant="sm"
+                          speed="0.9s"
+                          thickness={3}
+                        />
                         <span>Signing In...</span>
                       </>
                     ) : (
@@ -375,6 +409,18 @@ const LoginPage = memo(() => {
                   </Link>
                 </div>
               </CardContent>
+
+              <div className="mt-3 text-center">
+                <p className="text-sm text-slate-600">
+                  Don’t have an account?{" "}
+                  <Link
+                    to="/register"
+                    className="font-medium text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded px-1"
+                  >
+                    Sign up here
+                  </Link>
+                </p>
+              </div>
             </Card>
 
             <div className="mt-8 text-center text-[10px] text-slate-400">

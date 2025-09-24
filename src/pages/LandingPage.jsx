@@ -20,6 +20,7 @@ import workEmployee from "../assets/work-employee.svg";
 import photograpy from "../assets/photograpy.svg";
 import selfie from "../assets/selfie.svg";
 import { PointerHighlight } from "@/components/ui/pointer-highlight";
+import { TopBanner } from "./TopBanner";
 
 const content = [
   {
@@ -350,7 +351,7 @@ export default function HeroSection() {
   const Navbar = () => {
     return (
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 py-3 flex items-center justify-between">
           <div className="flex items-center">
             <img
               src="/src/assets/planoria-logo.png"
@@ -397,6 +398,7 @@ export default function HeroSection() {
 
   return (
     <>
+      <TopBanner />
       <Navbar />
       <section className="relative isolate overflow-hidden h-screen flex items-center pt-16 pb-4 sm:pb-6 lg:pb-8 bg-planoria">
         {/* Inline styles for marquee animations */}
