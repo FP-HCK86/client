@@ -1,9 +1,9 @@
 // src/pages/VideoDetailPage.jsx
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Film, Clock, Copy, Calendar, Edit, Save, X } from "lucide-react";
+import { Film, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import {
   Card,
   CardHeader,
@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/api/client";
-import FullPageLoader from "@/components/ui/FullPageLoader";
+import FullPageLoader from "@/components/FullPageLoader";
 
 export default function VideoDetailPage() {
   const { id } = useParams(); // route: /videos/:id
@@ -41,11 +41,11 @@ export default function VideoDetailPage() {
         // ekspektasi backend: { video: {...} }
         if (!data?.video) {
           // jika tidak ada video, beri tahu dan hentikan lebih awal
-          toast({
-            title: "Video not found",
-            description: "The requested video could not be found.",
-            variant: "destructive",
-          });
+            toast({
+              title: "Video not found",
+              description: "The requested video could not be found.",
+              variant: "warning",
+            });
           setVideo(null);
           setLoading(false);
           return;
@@ -63,7 +63,7 @@ export default function VideoDetailPage() {
         toast({
           title: "Failed to load video",
           description: e?.response?.data?.error || "Failed to load video details",
-          variant: "destructive",
+          variant: "warning",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -122,7 +122,7 @@ export default function VideoDetailPage() {
       toast({
         title: "Failed to update video",
         description: e?.response?.data?.error || "Failed to update video",
-        variant: "destructive",
+        variant: "warning",
       });
     }
   };
@@ -154,10 +154,10 @@ export default function VideoDetailPage() {
           <div className="flex items-center gap-3">
             <div>
               {isEditing ? (
-                <div className="space-y-2">
-                  <Label htmlFor="title">Video Title</Label>
+                <div>
                   <Input
                     id="title"
+                    aria-label="Video Title"
                     value={editForm.title}
                     onChange={(e) => handleFormChange("title", e.target.value)}
                     className="text-2xl md:text-3xl font-semibold tracking-tight h-auto py-1 border-none shadow-none px-0 focus-visible:ring-0"
@@ -178,10 +178,10 @@ export default function VideoDetailPage() {
                   variant="default"
                   className="btn-default inline-flex items-center gap-2 px-3 py-1 h-8"
                 >
-                  <Save className="mr-2 h-4 w-4" /> Save
+                  Save
                 </Button>
-                <Button onClick={handleCancelEdit} variant="outline">
-                  <X className="mr-2 h-4 w-4" /> Cancel
+                <Button onClick={handleCancelEdit} variant="outline" className="border border-black">
+                  Cancel
                 </Button>
               </>
             ) : (
@@ -191,13 +191,13 @@ export default function VideoDetailPage() {
                   variant="outline"
                   className="inline-flex items-center gap-2 px-3 py-1 h-12 border border-black"
                 >
-                  <Edit className="mr-2 h-4 w-4" /> Edit
+                  Edit
                 </Button>
                 <HoverButton
                   onClick={() => navigate("/schedule/create")}
                   className="inline-flex items-center gap-2 px-3 py-1 h-8"
                 >
-                  <Calendar className="mr-2 h-4 w-4" /> Schedule Post
+                  Schedule Post
                 </HoverButton>
               </>
             )}
@@ -238,7 +238,7 @@ export default function VideoDetailPage() {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium">Caption</span>
-                  {!isEditing && (
+                      {!isEditing && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -247,7 +247,7 @@ export default function VideoDetailPage() {
                         if (text) navigator.clipboard.writeText(text);
                       }}
                     >
-                      <Copy className="mr-2 h-4 w-4" /> Copy
+                      Copy
                     </Button>
                   )}
                 </div>
@@ -288,7 +288,7 @@ export default function VideoDetailPage() {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-sm font-medium">Hashtag</span>
-                  {!isEditing && (
+                    {!isEditing && (
                     <Button
                       size="sm"
                       variant="ghost"
@@ -297,7 +297,7 @@ export default function VideoDetailPage() {
                         if (t) navigator.clipboard.writeText(t);
                       }}
                     >
-                      <Copy className="mr-2 h-4 w-4" /> Copy
+                      Copy
                     </Button>
                   )}
                 </div>

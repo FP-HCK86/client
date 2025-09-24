@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
+import api from "@/api/client";
 import {
   User,
   Mail,
@@ -20,7 +21,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 
 // Base URL for API calls. Override via VITE_API_BASE_URL if needed.
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
@@ -49,7 +50,7 @@ export default function AccountSettingsPage() {
         toast({
           title: "Error",
           description: "Platform parameter is invalid",
-          variant: "destructive",
+          variant: "warning",
         });
         return;
       }
@@ -87,15 +88,15 @@ export default function AccountSettingsPage() {
         if (!token) {
           toast({
             title: "Error",
-            description: "Token tidak ditemukan. Silakan login ulang.",
-            variant: "destructive",
+            description: "Token not found. Please log in again.",
+            variant: "warning",
           });
           return;
         }
 
-        console.log("Making request to:", `${API_BASE}/connect/${platform}`);
+        console.log("Making request to:", `/connect/${platform}`);
 
-        const resp = await axios.get(`${API_BASE}/connect/${platform}`, {
+        const resp = await api.get(`/connect/${platform}`, {
           headers: { Authorization: `Bearer ${token}` },
           maxRedirects: 0,
           validateStatus: (status) => status < 400,
@@ -108,10 +109,10 @@ export default function AccountSettingsPage() {
             'Guard hit: platform literal string "undefined" reached success path – aborting.'
           );
           toast({
-            title: "Kesalahan Platform",
+            title: "Platform Error",
             description:
-              "Parameter platform tidak valid (undefined). Reload halaman dan coba lagi.",
-            variant: "destructive",
+              "Platform parameter is invalid (undefined). Please reload the page and try again.",
+            variant: "warning",
           });
           return;
         }
@@ -130,10 +131,10 @@ export default function AccountSettingsPage() {
         }
 
         toast({
-          title: "Tidak ada URL OAuth",
+          title: "No OAuth URL",
           description:
-            "Server tidak mengembalikan redirect URL. Coba lagi nanti.",
-          variant: "destructive",
+            "Server did not return a redirect URL. Please try again later.",
+          variant: "warning",
         });
       } catch (error) {
         console.log("=== ERROR CAUGHT ===");
@@ -155,27 +156,27 @@ export default function AccountSettingsPage() {
           error?.response?.data?.error?.includes("Platform undefined")
         ) {
           toast({
-            title: "Platform tidak valid",
+            title: "Invalid Platform",
             description:
-              "Front-end mengirim platform undefined. Harap refresh dan coba lagi.",
-            variant: "destructive",
+              "Front-end sent platform undefined. Please refresh and try again.",
+            variant: "warning",
           });
           return;
         }
         if (status === 502) {
           toast({
-            title: "Gagal Mendapatkan Redirect",
+            title: "Failed to Get Redirect",
             description:
-              "API Late tidak mengembalikan URL redirect. Coba lagi beberapa saat atau hubungi admin.",
-            variant: "destructive",
+              "Late API did not return a redirect URL. Please try again later or contact the administrator.",
+            variant: "warning",
           });
           return;
         }
         if (status === 401) {
           toast({
-            title: "Sesi kedaluwarsa",
-            description: "Silakan login ulang.",
-            variant: "destructive",
+            title: "Session Expired",
+            description: "Please log in again.",
+            variant: "warning",
           });
           return;
         }
@@ -184,8 +185,8 @@ export default function AccountSettingsPage() {
           description:
             (error?.response?.data && error.response.data.error) ||
             error?.message ||
-            "Gagal memulai koneksi ke platform",
-          variant: "destructive",
+            "Failed to start connection to platform",
+          variant: "warning",
         });
       } finally {
         // unset only this platform's connecting state
@@ -206,9 +207,7 @@ export default function AccountSettingsPage() {
       try {
         const token = localStorage.getItem("authToken");
         if (!token) throw new Error("No authentication token found");
-        const res = await axios.get(`${API_BASE}/auth/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await api.get(`/auth/profile`);
         if (res.data && res.data.user) {
           setProfile({
             name: res.data.user.username || "User",
@@ -222,7 +221,7 @@ export default function AccountSettingsPage() {
           description:
             (error?.response?.data && error.response.data.message) ||
             "Failed to load profile data",
-          variant: "destructive",
+          variant: "warning",
         });
       } finally {
         setLoading(false);
@@ -239,18 +238,18 @@ export default function AccountSettingsPage() {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-        toast({
-          title: "Invalid File",
-          description: "Please select an image file",
-          variant: "destructive",
-        });
+      toast({
+        title: "Invalid File",
+        description: "Please select an image file",
+        variant: "warning",
+      });
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File Too Large",
         description: "Please select an image smaller than 5MB",
-        variant: "destructive",
+        variant: "warning",
       });
       return;
     }
@@ -259,9 +258,8 @@ export default function AccountSettingsPage() {
       const token = localStorage.getItem("authToken");
       const formData = new FormData();
       formData.append("avatar", file);
-      const res = await axios.post(`${API_BASE}/auth/upload-avatar`, formData, {
+      const res = await api.post(`/auth/upload-avatar`, formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
@@ -270,7 +268,7 @@ export default function AccountSettingsPage() {
         toast({
           title: "Success!",
           description: "Profile picture updated successfully",
-          variant: "purple",
+          variant: "success",
         });
       }
     } catch (error) {
@@ -279,7 +277,7 @@ export default function AccountSettingsPage() {
         description:
           (error?.response?.data && error.response.data.message) ||
           "Failed to upload profile picture",
-        variant: "destructive",
+        variant: "warning",
       });
     } finally {
       setUploading(false);
@@ -296,16 +294,9 @@ export default function AccountSettingsPage() {
 
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.patch(
-        "http://localhost:3000/auth/profile",
-        { username: tempUsername.trim() },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await api.patch(`/auth/profile`, {
+        username: tempUsername.trim(),
+      });
 
       if (response.data.user) {
         setProfile((prev) => ({
@@ -316,7 +307,7 @@ export default function AccountSettingsPage() {
         toast({
           title: "Success!",
           description: "Username updated successfully",
-          variant: "purple",
+          variant: "success",
         });
       }
 
@@ -327,7 +318,7 @@ export default function AccountSettingsPage() {
         title: "Update Failed",
         description:
           error.response?.data?.message || "Failed to update username",
-        variant: "destructive",
+        variant: "warning",
       });
     } finally {
       setUpdating(false);
@@ -392,15 +383,15 @@ export default function AccountSettingsPage() {
               Account Settings
             </h1>
             <p className="text-slate-600 mt-1">
-              Kelola profil dan koneksi platform Anda.
+              Manage your profile and connected platforms.
             </p>
           </div>
         </div>
         {/* Profile */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="text-lg">Profil</CardTitle>
-            <CardDescription>Informasi akun dasar.</CardDescription>
+            <CardTitle className="text-lg">Profile</CardTitle>
+            <CardDescription>Basic account information.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
@@ -468,7 +459,7 @@ export default function AccountSettingsPage() {
                     fileInputRef.current && fileInputRef.current.click()
                   }
                   disabled={uploading}
-                  className="cursor-pointer"
+                  className="cursor-pointer border border-black"
                 >
                   {uploading ? (
                     <>
@@ -489,9 +480,9 @@ export default function AccountSettingsPage() {
         {/* Integrations */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="text-lg">Integrasi Platform</CardTitle>
+            <CardTitle className="text-lg">Integrations</CardTitle>
             <CardDescription>
-              Hubungkan akun untuk otomatisasi posting.
+              Connect accounts for automated posting.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -544,24 +535,24 @@ export default function AccountSettingsPage() {
           </CardContent>
           <CardFooter>
             <div className="text-xs text-slate-600">
-              Dengan menghubungkan akun, Anda menyetujui scope yang dibutuhkan
-              untuk publish konten dan membaca profil. Anda dapat memutuskan
-              koneksi kapan saja.
+              By connecting an account you agree to the required scopes for
+              publishing content and reading profile information. You may
+              disconnect at any time.
             </div>
           </CardFooter>
         </Card>
         {/* Danger Zone */}
         <Card className="mt-6">
           <CardHeader>
-            <CardTitle className="text-lg">Keamanan</CardTitle>
-            <CardDescription>Kelola sesi & koneksi.</CardDescription>
+            <CardTitle className="text-lg">Security</CardTitle>
+            <CardDescription>Manage sessions & connections.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-4">
-              <div className="text-sm">Logout dari semua sesi perangkat.</div>
+              <div className="text-sm">Logout</div>
               <Button variant="outline" asChild className="cursor-pointer">
                 <Link to="/logout">
-                  <LogOut className="mr-2 h-4 w-4" /> Logout All
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
                 </Link>
               </Button>
             </div>

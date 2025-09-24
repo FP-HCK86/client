@@ -1,6 +1,6 @@
 // src/pages/VideoLibraryPage.jsx
 import React, { useState, useEffect } from "react";
-import { Film, Clock, Trash2, Filter as FilterIcon } from "lucide-react";
+import { Film, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import api from '@/api/client';
-import FullPageLoader from '@/components/ui/FullPageLoader';
+import FullPageLoader from '@/components/FullPageLoader';
 
 export default function VideoLibraryPage() {
   const [videos, setVideos] = useState([]);
@@ -37,7 +37,7 @@ export default function VideoLibraryPage() {
         toast({
             title: "Error",
             description: e?.response?.data?.error || "Failed to load videos.",
-            variant: "destructive",
+            variant: "warning",
           });
       } finally {
         if (mounted) setLoading(false);
@@ -86,7 +86,7 @@ export default function VideoLibraryPage() {
       toast({
         title: "Failed to Delete Video",
         description: error?.response?.data?.error || "Failed to delete video.",
-        variant: "destructive",
+        variant: "warning",
       });
       setDeleting(null); // Reset immediately on error
     }
@@ -136,7 +136,7 @@ export default function VideoLibraryPage() {
                 </div>
               <div className="flex gap-2">
                 <Button className="w-full" variant="secondary">
-                  <FilterIcon className="mr-2 h-4 w-4" /> Reset Filter
+                  Reset Filter
                 </Button>
               </div>
             </div>
@@ -214,7 +214,6 @@ export default function VideoLibraryPage() {
                                 size="sm"
                                 disabled={deleting === id}
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
                                 {deleting === id ? "Deleting..." : "Delete"}
                               </Button>
                             </AlertDialogTrigger>
@@ -226,10 +225,10 @@ export default function VideoLibraryPage() {
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel className="border border-black">Cancel</AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() => handleDeleteVideo(id)}
-                                  className="bg-red-600 hover:bg-red-700"
+                                  className="btn-default border border-black"
                                 >
                                   Delete
                                 </AlertDialogAction>

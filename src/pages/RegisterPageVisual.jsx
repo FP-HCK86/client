@@ -11,7 +11,7 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,9 +25,9 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth.jsx";
 import { useToast } from "@/hooks/use-toast";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import { PointerHighlight } from "@/components/ui/pointer-highlight";
-import FullPageLoader from '@/components/ui/FullPageLoader';
+import FullPageLoader from '@/components/FullPageLoader';
 
 const RegisterPage = memo(() => {
   const { register, googleLogin, isAuthenticated } = useAuth();
@@ -221,7 +221,7 @@ const RegisterPage = memo(() => {
         toast({
           title: "Init Error",
           description: "Failed to initialize Google Sign-In",
-          variant: "destructive",
+          variant: "warning",
         });
       }
     };
@@ -241,10 +241,10 @@ const RegisterPage = memo(() => {
       script.onload = initialize;
       script.onerror = () =>
         toast({
-          title: "Script Error",
-          description: "Failed to load Google Sign-In script",
-          variant: "destructive",
-        });
+            title: "Script Error",
+            description: "Failed to load Google Sign-In script",
+            variant: "warning",
+          });
       document.head.appendChild(script);
     } else {
       const t = setTimeout(initialize, 500);

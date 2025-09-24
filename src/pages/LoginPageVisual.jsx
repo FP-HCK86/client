@@ -11,16 +11,16 @@ import {
   CardContent,
   CardDescription,
 } from "@/components/ui/card";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth.jsx";
 import { useToast } from "@/hooks/use-toast";
-import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import LoadingSpinner from '@/components/LoadingSpinner';
 import { PointerHighlight } from "@/components/ui/pointer-highlight";
-import FullPageLoader from '@/components/ui/FullPageLoader';
+import FullPageLoader from '@/components/FullPageLoader';
 
 const LoginPage = memo(() => {
   const { login, googleLogin, isAuthenticated } = useAuth();
@@ -162,7 +162,7 @@ const LoginPage = memo(() => {
         toast({
           title: "Init Error",
           description: "Failed to initialize Google Sign-In",
-          variant: "destructive",
+          variant: "warning",
         });
       }
     };

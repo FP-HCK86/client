@@ -4,16 +4,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/api/client";
 import { useAuth } from "@/hooks/useAuth";
-import FullPageLoader from "@/components/ui/FullPageLoader";
+import FullPageLoader from "@/components/FullPageLoader";
 // import { startOfDay, addDays, sameDay, startOfWeekMonday } from "@/lib/dateHelpers";
 import { addDays, sameDay } from "@/lib/dateHelpers";
 import { getMonthMatrix, getWeekRange } from "@/lib/calendarMatrix";
@@ -57,10 +56,10 @@ export default function ScheduleCalendarPage({
         setSchedules(response.data.schedules || []);
       } catch (err) {
         toast({
-          title: "Failed to load schedules",
-          description: err?.response?.data?.error || err.message || "Failed to fetch schedules.",
-          variant: "destructive",
-        });
+            title: "Failed to load schedules",
+            description: err?.response?.data?.error || err.message || "Failed to fetch schedules.",
+            variant: "warning",
+          });
         console.error("Error fetching schedules:", err);
       } finally {
         setLoading(false);

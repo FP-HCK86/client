@@ -58,6 +58,10 @@
   --btn-border: #000000;
   /* Spinner color token (defaults to black) */
   --spinner-color: #000000;
+  /* Three-color pastel ring for FullPageLoader (shadcn ring colors requested) */
+  --spinner-color-1: #e9d5ff;
+  --spinner-color-2: #dff7e6;
+  --spinner-color-3: #ffd9b3;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -152,21 +156,11 @@
     background-color: var(--btn-purple);
     border: 1px solid var(--btn-border);
   }
-  .btn-bg-green {
-    background-color: var(--btn-green);
-    border: 1px solid var(--btn-border);
-  }
   .btn-bg-orange {
     background-color: var(--btn-orange);
     border: 1px solid var(--btn-border);
   }
   /* Simple background utilities using the pastel tokens (no border) */
-  .bg-btn-purple {
-    background-color: var(--btn-purple) !important;
-  }
-  .bg-btn-green {
-    background-color: var(--btn-green) !important;
-  }
   .bg-btn-orange {
     background-color: var(--btn-orange) !important;
   }
@@ -202,13 +196,6 @@
   .text-btn-orange {
     color: var(--btn-orange) !important;
   }
-
-  /* Convenience helper for cancel/neutral buttons (white bg + black border) */
-  .btn-cancel {
-    background-color: #ffffff !important;
-    border: 1px solid var(--btn-border) !important;
-    color: #000000 !important;
-  }
   .btn-default {
     transition: background-color 150ms ease, transform 150ms ease;
   }
@@ -222,11 +209,13 @@
     width: var(--spinner-size, 36px);
     height: var(--spinner-size, 36px);
     border-radius: 50%;
-    /* Spinner uses a single color (uses --spinner-color) so it's rendered black by default */
-      background: conic-gradient(var(--spinner-color), var(--spinner-color), var(--spinner-color), var(--spinner-color));
+    /* Spinner uses a three-color conic gradient to form a pastel ring */
+    background: conic-gradient(var(--spinner-color-1), var(--spinner-color-2), var(--spinner-color-3), var(--spinner-color-1));
     /* Create a hole in the middle to form a ring using masks */
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--spinner-thickness, 6px)), black calc(100% - var(--spinner-thickness, 6px)));
     mask: radial-gradient(farthest-side, transparent calc(100% - var(--spinner-thickness, 6px)), black calc(100% - var(--spinner-thickness, 6px)));
+    /* subtle outer black border simulated with box-shadow so it remains visible outside the masked ring */
+    box-shadow: 0 0 0 2px var(--btn-border);
     animation: spinner-rotate var(--spinner-speed, 1s) linear infinite;
     display: inline-block;
     vertical-align: middle;
@@ -239,7 +228,8 @@
   }
 
   /* Convenience size helpers */
-  .custom-spinner-sm { --spinner-size: 18px; --spinner-thickness: 3px; }
-  .custom-spinner-md { --spinner-size: 36px; --spinner-thickness: 6px; }
-  .custom-spinner-lg { --spinner-size: 48px; --spinner-thickness: 8px; }
+  /* Increased sizes: lg is larger to make full-page loader more prominent */
+  .custom-spinner-sm { --spinner-size: 24px; --spinner-thickness: 4px; }
+  .custom-spinner-md { --spinner-size: 44px; --spinner-thickness: 8px; }
+  .custom-spinner-lg { --spinner-size: 80px; --spinner-thickness: 10px; }
 }

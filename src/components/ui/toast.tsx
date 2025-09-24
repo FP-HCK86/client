@@ -34,10 +34,12 @@ const toastVariants = cva(
               "destructive rounded border !bg-white !text-red-700 !border-red-300 p-4 shadow-md",
             purple:
               "purple rounded border bg-purple-600 text-white border-purple-600 p-4 shadow-md",
-            // Smaller success toast (compact padding and text) - square (no rounding)
-            success: "rounded border bg-[#dff7e6] text-black border-black p-2 pr-3 text-xs space-x-1",
-            // Smaller error/warning toast: white background with red text (compact) - square
-            warning: "rounded border bg-white text-red-600 border-black p-2 pr-3 text-xs space-x-1",
+            // Success toast (light green background, dark text)
+            success:
+              "rounded border bg-[#dff7e6] text-black border-black px-3 py-2 pr-3 text-sm items-start",
+            // Warning toast (white background with red text)
+            warning:
+              "rounded border bg-white text-red-600 border-black px-3 py-2 pr-3 text-sm items-start",
           },
         },
         defaultVariants: {

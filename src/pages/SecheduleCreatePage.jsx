@@ -11,7 +11,7 @@ import {
   Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import {
   Card,
   CardHeader,
@@ -23,7 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/api/client";
-import FullPageLoader from "@/components/ui/FullPageLoader";
+import infoMsg from "../assets/info.png"
 
 export default function ScheduleCreatePage() {
   const [videos, setVideos] = useState([]);
@@ -66,18 +66,18 @@ export default function ScheduleCreatePage() {
           // eslint-disable-next-line no-await-in-loop
           await new Promise((r) => setTimeout(r, 150));
         }
-        if (!window.snap) throw new Error("Gagal memuat Midtrans");
+        if (!window.snap) throw new Error("Failed to load Midtrans");
       }
 
       const { data } = await api.post("/payment/create");
-      if (!data || !data.token)
-        throw new Error("Token pembayaran tidak tersedia");
+      if (!data || !data.token) throw new Error("Payment token not available");
 
       window.snap.pay(data.token, {
         onSuccess: async (result) => {
           toast({
-            title: "Pembayaran Berhasil",
-            description: "Akun Anda telah diupgrade ke Premium",
+            title: "Payment Successful",
+            description: "Your account has been upgraded to Premium",
+            variant: "success",
           });
           // trigger backend status check
           try {
@@ -92,14 +92,16 @@ export default function ScheduleCreatePage() {
         },
         onPending: (result) => {
           toast({
-            title: "Pembayaran Pending",
-            description: "Pembayaran sedang diproses.",
+            title: "Payment Pending",
+            description: "Payment is processing.",
+            variant: "warning",
           });
         },
         onError: (result) => {
           toast({
-            title: "Pembayaran Gagal",
-            description: "Terjadi kesalahan pembayaran.",
+            title: "Payment Failed",
+            description: "An error occurred during payment.",
+            variant: "warning",
           });
         },
       });
@@ -108,7 +110,8 @@ export default function ScheduleCreatePage() {
       toast({
         title: "Error",
         description:
-          err?.message || "Terjadi kesalahan saat memulai pembayaran.",
+          err?.message || "An error occurred while starting the payment.",
+        variant: "warning",
       });
     } finally {
       setUpgradeProcessing(false);
@@ -132,7 +135,7 @@ export default function ScheduleCreatePage() {
           title: "Failed to load videos",
           description:
             e?.response?.data?.error || "Failed to load Video Library.",
-          variant: "destructive",
+          variant: "warning",
         });
       } finally {
         if (mounted) setLoading(false);
@@ -143,7 +146,7 @@ export default function ScheduleCreatePage() {
     };
   }, [toast]);
 
-  // Saat pilih video → isi caption/hashtags dari DB
+  // When a video is picked → prefill caption/hashtags from DB
   const onPickVideo = (v) => {
     setSelectedVideo(v);
     setPickerOpen(false);
@@ -209,7 +212,7 @@ export default function ScheduleCreatePage() {
         toast({
           title: "Failed to create schedule",
           description: errMsg,
-          variant: "destructive",
+          variant: "warning",
         });
       }
     } finally {
@@ -234,7 +237,7 @@ export default function ScheduleCreatePage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Kolom kiri: pilih + preview video */}
+          {/* Left column: pick + preview video */}
           <Card className="lg:col-span-1 overflow-hidden text-center">
             <CardHeader className="text-center">
               <CardTitle className="text-lg flex items-center justify-center gap-2">
@@ -310,7 +313,7 @@ export default function ScheduleCreatePage() {
             </CardContent>
           </Card>
 
-          {/* Kolom kanan: detail schedule (+ info video terpilih) */}
+          {/* Right column: schedule details (+ selected video info) */}
           <Card className="lg:col-span-2">
             <CardHeader className="text-center">
               <CardTitle className="text-lg flex items-center justify-center gap-2">
@@ -321,12 +324,12 @@ export default function ScheduleCreatePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
-              {/* Info video terpilih (read-only) */}
+              {/* Selected video info (read-only) */}
               {selectedVideo && (
                 <div className="rounded-xl border p-3 text-sm flex flex-wrap gap-3 items-center">
                   <span className="inline-flex items-center gap-2 text-slate-700">
                     <Info className="h-4 w-4" /> Video:{" "}
-                    <b>{selectedVideo.title || "Tanpa judul"}</b>
+                    <b>{selectedVideo.title || "Untitled"}</b>
                   </span>
                   <Badge variant="secondary">
                     Uploaded {fmtDate(selectedVideo.createdAt)}
@@ -358,7 +361,7 @@ export default function ScheduleCreatePage() {
                 </div>
               </div>
 
-              {/* Caption (prefill dari video, jika ada) */}
+              {/* Caption (prefill from video, if any) */}
               <div>
                 <div className="mb-1 flex items-center justify-between">
                   <label className="text-sm font-medium flex items-center gap-2">
@@ -368,15 +371,15 @@ export default function ScheduleCreatePage() {
                 <textarea
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Tulis caption..."
+                  placeholder="Write a caption..."
                   className="min-h-[100px] w-full rounded-xl border p-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                 />
               </div>
 
-              {/* Hashtags (prefill dari video, jika ada) */}
+              {/* Hashtags (prefill from video, if any) */}
               <div>
                 <label className="text-sm font-medium flex items-center gap-2">
-                  <Hash className="h-4 w-4" /> Hashtag
+                  <Hash className="h-4 w-4" /> Hashtags
                 </label>
                 <input
                   value={hashtags}
@@ -414,7 +417,7 @@ export default function ScheduleCreatePage() {
               {/* Date & Time */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <label className="text-sm font-medium">Tanggal</label>
+                  <label className="text-sm font-medium">Date</label>
                   <input
                     type="date"
                     value={date}
@@ -423,7 +426,7 @@ export default function ScheduleCreatePage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Jam</label>
+                  <label className="text-sm font-medium">Time</label>
                   <input
                     type="time"
                     value={time}
@@ -434,7 +437,7 @@ export default function ScheduleCreatePage() {
               </div>
             </CardContent>
 
-            {/* Tombol Simpan: hanya di bawah */}
+            {/* Save button: bottom only */}
             <CardFooter className="flex items-center justify-end gap-2">
               <Button
                 variant="secondary"
@@ -472,10 +475,13 @@ export default function ScheduleCreatePage() {
         )}
         {upgradeRedirect && (
           <div className="fixed right-6 top-6 z-50">
-            <div className="rounded-lg bg-gradient-to-r from-red-500 via-red-400 to-red-300 p-4 text-white shadow-lg">
+            <div className="rounded-lg bg-btn-orange to-red-300 p-4 text-black shadow border border-black">
               <div className="flex items-start gap-4">
                 <div className="flex-1">
-                  <div className="font-semibold">Limit reached</div>
+                  <div className="flex items-center gap-2">
+                    <img src={infoMsg} alt="Info" className="w-5 h-5" />
+                    <div className="font-semibold">Limit reached</div>
+                  </div>
                   <div className="text-sm">
                     You have reached the limit of 2 schedules. Upgrade for
                     unlimited access.
@@ -488,13 +494,13 @@ export default function ScheduleCreatePage() {
                       startInlineUpgrade();
                     }}
                     disabled={upgradeProcessing}
-                    className="rounded-md bg-white px-3 py-1 text-sm font-medium text-red-600"
+                    className="rounded-md bg-white px-3 py-1 text-xs font-medium text-black border border-black"
                   >
                     {upgradeProcessing ? "Processing..." : "Upgrade"}
                   </button>
                   <button
                     onClick={() => setUpgradeRedirect(null)}
-                    className="rounded-md bg-white/10 px-2 py-1 text-sm text-white"
+                    className="rounded-md bg-white px-2 py-1 text-xs text-black border border-black"
                   >
                     Close
                   </button>

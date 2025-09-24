@@ -10,7 +10,6 @@ export const useNotifications = () => {
   };
 
   const showError = (title, description) => {
-    // use the 'warning' variant which maps to the requested orange/pastel error style
     toast({ title: title || 'Error', description, variant: 'warning' });
   };
 

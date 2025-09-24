@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from 'react-router-dom';
 import { UploadCloud, Film, Save } from "lucide-react";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import {
   Card,
   CardHeader,
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import api from '@/api/client';
-import FullPageLoader from '@/components/ui/FullPageLoader';
+import FullPageLoader from '@/components/FullPageLoader';
 
 export default function VideoUploadPage() {
   const [file, setFile] = useState(null);
@@ -50,7 +50,7 @@ export default function VideoUploadPage() {
       toast({
         title: "Error",
         description: "Please select a video file.",
-        variant: "destructive",
+        variant: "warning",
       });
       return;
     }
@@ -58,7 +58,7 @@ export default function VideoUploadPage() {
       toast({
         title: "Error",
         description: "Caption is required.",
-        variant: "destructive",
+        variant: "warning",
       });
       return;
     }
@@ -86,8 +86,8 @@ export default function VideoUploadPage() {
     } catch (e) {
       toast({
         title: "Upload Failed",
-        description: "Upload video failed.",
-        variant: "destructive",
+        description: e?.response?.data?.error || "Upload video failed.",
+        variant: "warning",
       });
     } finally {
       setUploading(false);

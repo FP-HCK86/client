@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { CalendarDays, Clock, Video, Hash, Play, Copy } from "lucide-react";
+import { CalendarDays, Clock, Play, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HoverButton from "@/components/ui/HoverButton";
+import HoverButton from "@/components/HoverButton";
 import {
   Card,
   CardHeader,
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import api from "@/api/client";
-import FullPageLoader from "@/components/ui/FullPageLoader";
+import FullPageLoader from "@/components/FullPageLoader";
 
 export default function ScheduleDetailPage() {
   const { id } = useParams();
@@ -53,7 +53,7 @@ export default function ScheduleDetailPage() {
         toast({
           title: "Failed to load schedule",
           description: err.response?.data?.error || "Failed to fetch schedule",
-          variant: "destructive",
+          variant: "warning",
         });
       } finally {
         setLoading(false);
@@ -71,7 +71,9 @@ export default function ScheduleDetailPage() {
     );
   if (!schedule)
     return (
-      <div className="min-h-screen flex items-center justify-center">Schedule not found</div>
+      <div className="min-h-screen flex items-center justify-center">
+        Schedule not found
+      </div>
     );
 
   const fmtDateTime = (iso) =>
@@ -141,7 +143,7 @@ export default function ScheduleDetailPage() {
       toast({
         title: "Failed to update schedule",
         description: e?.response?.data?.error || "Failed to update schedule",
-        variant: "destructive",
+        variant: "warning",
       });
     } finally {
       setSubmitting(false);
@@ -166,7 +168,7 @@ export default function ScheduleDetailPage() {
       toast({
         title: "Failed to delete schedule",
         description: e?.response?.data?.error || "Failed to delete schedule",
-        variant: "destructive",
+        variant: "warning",
       });
       setDeleting(false); // Only reset deleting state on error, not on success
     }
@@ -174,7 +176,12 @@ export default function ScheduleDetailPage() {
   };
 
   const statusBadge =
-    schedule.status === "posted" ? (
+    // Compute effective status: if still 'pending' but vendor_job_id exists and scheduled time passed, treat as posted (UI only)
+    (schedule.status === "pending" &&
+    schedule.vendor_job_id &&
+    new Date(schedule.scheduled_at).getTime() <= Date.now()
+      ? "posted"
+      : schedule.status) === "posted" ? (
       <Badge className="btn-green border-black font-normal">Posted</Badge>
     ) : schedule.status === "failed" ? (
       <Badge className="bg-red-100 text-black border-black">Failed</Badge>
@@ -182,10 +189,7 @@ export default function ScheduleDetailPage() {
       <Badge className="btn-orange border-black">Pending</Badge>
     );
 
-  const logs = [
-    { time: schedule.createdAt, text: "Schedule created" },
-    { time: schedule.updatedAt, text: "Updated metadata" },
-  ];
+  // logs removed — not used in UI
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
@@ -194,7 +198,9 @@ export default function ScheduleDetailPage() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <div>
-                <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Schedule Detail</h1>
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
+                Schedule Detail
+              </h1>
               <p className="text-slate-600 text-sm mt-1">ID: {schedule._id}</p>
             </div>
           </div>
@@ -202,10 +208,19 @@ export default function ScheduleDetailPage() {
             {schedule.status === "pending" ? (
               editing ? (
                 <>
-                  <HoverButton size="sm" onClick={saveEdits} disabled={submitting}>
+                  <HoverButton
+                    size="sm"
+                    onClick={saveEdits}
+                    disabled={submitting}
+                  >
                     {submitting ? "Saving..." : "Save"}
                   </HoverButton>
-                  <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={submitting}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditing(false)}
+                    disabled={submitting}
+                  >
                     Cancel
                   </Button>
                 </>
@@ -220,7 +235,11 @@ export default function ScheduleDetailPage() {
                   </HoverButton>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" disabled={deleting} className="border border-black">
+                      <Button
+                        variant="ghost"
+                        disabled={deleting}
+                        className="border border-black"
+                      >
                         {deleting ? "Deleting..." : "Delete"}
                       </Button>
                     </AlertDialogTrigger>
@@ -228,12 +247,16 @@ export default function ScheduleDetailPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete this schedule? This action cannot be undone.
+                          Are you sure you want to delete this schedule? This
+                          action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteSchedule} className="bg-red-600 hover:bg-red-700">
+                        <AlertDialogAction
+                          onClick={handleDeleteSchedule}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
                           Delete
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -250,7 +273,7 @@ export default function ScheduleDetailPage() {
                     toast({
                       title: "Cannot edit",
                       description: `Schedule cannot be edited because status is ${schedule.status}`,
-                      variant: "destructive",
+                      variant: "warning",
                     });
                   }}
                 >
@@ -263,7 +286,7 @@ export default function ScheduleDetailPage() {
                     toast({
                       title: "Cannot delete",
                       description: `Schedule cannot be deleted because status is ${schedule.status}`,
-                      variant: "destructive",
+                      variant: "warning",
                     });
                   }}
                 >
@@ -382,7 +405,7 @@ export default function ScheduleDetailPage() {
                       else navigator.clipboard?.writeText(editCaption || "");
                     }}
                   >
-                    <Copy className="mr-2 h-4 w-4" /> copy
+                    <Copy className="mr-2 h-4 w-4" /> Copy
                   </Button>
                 </div>
               </div>
@@ -432,7 +455,7 @@ export default function ScheduleDetailPage() {
                       else navigator.clipboard?.writeText(editHashtags || "");
                     }}
                   >
-                    <Copy className="mr-2 h-4 w-4" /> copy
+                    <Copy className="mr-2 h-4 w-4" /> Copy
                   </Button>
                 </div>
               </div>
@@ -451,7 +474,7 @@ export default function ScheduleDetailPage() {
                   />
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-sm font-medium">Tanggal</label>
+                      <label className="text-sm font-medium">Date</label>
                       <input
                         type="date"
                         value={editDate}
@@ -460,7 +483,7 @@ export default function ScheduleDetailPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium">Jam</label>
+                      <label className="text-sm font-medium">Time</label>
                       <input
                         type="time"
                         value={editTime}
